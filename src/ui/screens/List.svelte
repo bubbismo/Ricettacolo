@@ -1,0 +1,122 @@
+<script lang="ts">
+  import { store } from '../../app/store.svelte'
+  import { go } from '../../app/router.svelte'
+  import Photo from '../components/Photo.svelte'
+  import Stars from '../components/Stars.svelte'
+  import type { Filters } from '../../core/search'
+
+  let showFilters = $state(false)
+  const f = store.filters
+
+  const sorts: { v: Filters['sort']; t: string }[] = [
+    { v: 'title', t: 'Titolo' }, { v: 'date', t: 'Data' }, { v: 'rating', t: 'Voto' }, { v: 'cooked', t: 'Cucinata di recente' },
+  ]
+  const activeCount = $derived(
+    (f.category ? 1 : 0) + (f.minRating ? 1 : 0) + (f.favoritesOnly ? 1 : 0) + (f.cooked !== 'all' ? 1 : 0),
+  )
+  const list = $derived(store.visible)
+
+  function reset() {
+    f.category = null; f.minRating = 0; f.favoritesOnly = false; f.cooked = 'all'
+  }
+</script>
+
+<div class="page">
+  <div class="topbar"><h1>Ricettacolo</h1></div>
+
+  {#if store.backupDue}
+    <div class="banner">
+      {store.lastBackup ? 'Il tuo ultimo backup è vecchio.' : 'Non hai ancora fatto un backup.'}
+      Salva una copia delle ricette per non rischiare di perderle.
+      <div class="row">
+        <a class="btn" href="#/impostazioni">Fai il backup</a>
+        <button class="btn" onclick={() => (store.reminderDismissed = true)}>Più tardi</button>
+      </div>
+    </div>
+  {/if}
+
+  <div class="row" style="flex-wrap:nowrap;margin-bottom:10px">
+    <input class="input" type="search" placeholder="Cerca titolo, ingredienti, note…" bind:value={f.query} enterkeyhint="search" />
+    <button class="iconbtn" aria-label="Filtri e ordinamento" aria-expanded={showFilters} onclick={() => (showFilters = !showFilters)}>
+      ⚙{#if activeCount}<sup>{activeCount}</sup>{/if}
+    </button>
+  </div>
+
+  {#if store.categories.length}
+    <div class="chips scroll" style="margin-bottom:8px">
+      <button class="chip" aria-pressed={!f.category} onclick={() => (f.category = null)}>Tutte</button>
+      {#each store.categories as c (c)}
+        <button class="chip" aria-pressed={f.category === c} onclick={() => (f.category = f.category === c ? null : c)}>{c}</button>
+      {/each}
+    </div>
+  {/if}
+
+  {#if showFilters}
+    <div class="card">
+      <span class="lbl">Voto minimo</span>
+      <div class="chips" style="margin-bottom:12px">
+        {#each [0, 3, 4, 5] as n (n)}
+          <button class="chip" aria-pressed={f.minRating === n} onclick={() => (f.minRating = n)}>{n === 0 ? 'Qualsiasi' : `${n}★ e più`}</button>
+        {/each}
+      </div>
+      <span class="lbl">Mostra</span>
+      <div class="chips" style="margin-bottom:12px">
+        <button class="chip" aria-pressed={f.favoritesOnly} onclick={() => (f.favoritesOnly = !f.favoritesOnly)}>♥ Preferite</button>
+        <button class="chip" aria-pressed={f.cooked === 'tried'} onclick={() => (f.cooked = f.cooked === 'tried' ? 'all' : 'tried')}>Provate</button>
+        <button class="chip" aria-pressed={f.cooked === 'never'} onclick={() => (f.cooked = f.cooked === 'never' ? 'all' : 'never')}>Mai provate</button>
+      </div>
+      <label class="lbl" for="sort">Ordina per</label>
+      <select id="sort" class="input" bind:value={f.sort}>
+        {#each sorts as s (s.v)}<option value={s.v}>{s.t}</option>{/each}
+      </select>
+      {#if activeCount}<button class="btn block" style="margin-top:12px" onclick={reset}>Azzera filtri</button>{/if}
+    </div>
+  {/if}
+
+  {#if !store.loaded}
+    <p class="hint">Caricamento…</p>
+  {:else if store.recipes.length === 0}
+    <div class="card" style="text-align:center">
+      <p style="font-size:40px;margin:4px 0">📖</p>
+      <h2>Il ricettario è vuoto</h2>
+      <p class="hint">Tocca il pulsante + per aggiungere la prima ricetta: basta una foto della pagina.</p>
+    </div>
+  {:else if list.length === 0}
+    <p class="hint">Nessuna ricetta corrisponde alla ricerca.</p>
+  {:else}
+    <p class="hint" style="margin:0 0 8px">{list.length} {list.length === 1 ? 'ricetta' : 'ricette'}</p>
+    <ul class="grid">
+      {#each list as r (r.id)}
+        <li>
+          <button class="rc" onclick={() => go(`/r/${r.id}`)}>
+            <div class="thumb">
+              {#if r.photoIds[0]}<Photo id={r.photoIds[0]} alt="" />{:else}<span class="noimg">🍽</span>{/if}
+              {#if r.favorite}<span class="heart" aria-label="Preferita">♥</span>{/if}
+              {#if r.photoIds.length > 1}<span class="pages">{r.photoIds.length} pag.</span>{/if}
+            </div>
+            <div class="meta">
+              <strong>{r.title || 'Senza titolo'}</strong>
+              {#if r.source}<small>{r.source}</small>{/if}
+              <Stars value={r.rating} />
+            </div>
+          </button>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+</div>
+
+<a class="fab" href="#/nuova" aria-label="Aggiungi ricetta">+</a>
+
+<style>
+  sup { font-size: 12px; color: var(--accent); font-weight: 700; }
+  .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .rc { width: 100%; text-align: left; padding: 0; border: 1.5px solid var(--line); border-radius: 16px; background: var(--card); overflow: hidden; display: block; }
+  .thumb { position: relative; aspect-ratio: 4 / 3; background: var(--line); overflow: hidden; display: grid; place-items: center; }
+  .noimg { font-size: 40px; opacity: .6; }
+  .heart { position: absolute; top: 6px; right: 8px; color: var(--accent); font-size: 22px; text-shadow: 0 0 4px #fff; }
+  .pages { position: absolute; bottom: 6px; left: 6px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 99px; }
+  .meta { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .meta strong { font-size: 17px; line-height: 1.2; overflow-wrap: anywhere; }
+  .meta small { color: var(--muted); font-size: 14px; }
+</style>

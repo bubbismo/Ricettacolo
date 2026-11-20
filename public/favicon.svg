@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#fbf1df"/>
+  <g transform="translate(256 256) scale(0.9) translate(-284 -270)" stroke="#4a2a14" stroke-width="9" stroke-linejoin="round" stroke-linecap="round">
+    <!-- pergamena -->
+    <g transform="rotate(-6 256 240)">
+      <path d="M112 58 H346 L408 120 V420 Q408 432 396 432 H124 Q112 432 112 420 Z" fill="#f2d99c"/>
+      <ellipse cx="170" cy="380" rx="34" ry="22" fill="#e8c57a" stroke="none" opacity=".7"/>
+      <ellipse cx="368" cy="230" rx="22" ry="30" fill="#e8c57a" stroke="none" opacity=".6"/>
+      <path d="M346 58 Q336 116 408 120 Q372 112 360 86 Q352 70 346 58 Z" fill="#d9b468"/>
+      <g fill="none" stroke-width="11">
+        <path d="M150 112 Q186 100 220 112 T290 110" stroke="#c8322a" stroke-width="13"/>
+        <path d="M150 162 Q190 152 230 162 T330 158" stroke="#a87a44"/>
+        <path d="M150 204 Q200 194 250 204 T350 200" stroke="#a87a44"/>
+        <path d="M150 246 Q190 236 226 246 T300 242" stroke="#a87a44"/>
+      </g>
+    </g>
+    <!-- bottiglia d'olio -->
+    <path d="M318 196 H350 V236 Q350 258 372 280 Q388 296 388 322 V454 Q388 470 372 470 H296 Q280 470 280 454 V322 Q280 296 296 280 Q318 258 318 236 Z" fill="#b9ad2c"/>
+    <rect x="312" y="164" width="44" height="38" rx="8" fill="#8a5428"/>
+    <path d="M298 330 V440" fill="none" stroke="#e6df7c" stroke-width="12" stroke-linecap="round" stroke-opacity=".9"/>
+    <rect x="296" y="350" width="76" height="52" rx="8" fill="#fbf1df" stroke-width="7"/>
+    <path d="M314 384 Q334 360 356 368 Q336 390 314 384 Z" fill="#7d8a1e" stroke-width="5"/>
+    <!-- sacchetto di farina -->
+    <path d="M150 474 Q132 410 158 360 Q170 340 186 332 L178 312 Q218 296 258 312 L250 332 Q268 340 280 360 Q302 410 286 474 Z" fill="#fffaf0"/>
+    <path d="M176 326 Q218 340 260 326" fill="none" stroke="#a5672e" stroke-width="10"/>
+    <path d="M182 312 Q198 292 218 300 Q238 290 254 312" fill="#fffaf0" stroke-width="7"/>
+    <g fill="#d9a441" stroke="#8a5a20" stroke-width="5">
+      <path d="M218 450 V384" fill="none"/>
+      <ellipse cx="206" cy="418" rx="8" ry="15" transform="rotate(-30 206 418)"/>
+      <ellipse cx="230" cy="418" rx="8" ry="15" transform="rotate(30 230 418)"/>
+      <ellipse cx="206" cy="396" rx="8" ry="15" transform="rotate(-30 206 396)"/>
+      <ellipse cx="230" cy="396" rx="8" ry="15" transform="rotate(30 230 396)"/>
+      <ellipse cx="218" cy="378" rx="8" ry="15"/>
+    </g>
+    <!-- cipolla -->
+    <path d="M290 392 Q300 404 318 410 Q352 424 350 452 Q346 480 300 480 Q254 480 250 452 Q248 424 282 410 Q294 404 290 392 Z" fill="#e0943a"/>
+    <path d="M300 418 Q284 446 296 476 M300 418 Q318 446 306 476" fill="none" stroke="#a95a1c" stroke-width="5"/>
+    <path d="M290 392 Q286 380 294 372" fill="none" stroke-width="7"/>
+    <!-- pomodoro -->
+    <ellipse cx="392" cy="430" rx="66" ry="56" fill="#e5332a"/>
+    <ellipse cx="364" cy="412" rx="16" ry="10" fill="#ff8a6a" stroke="none" transform="rotate(-25 364 412)"/>
+    <path d="M392 380 L372 368 L384 390 L356 394 L384 400 L392 412 L400 400 L428 394 L400 390 L412 368 Z" fill="#3f8f3a" stroke-width="6"/>
+    <path d="M392 382 Q390 364 400 352" fill="none" stroke="#2f6b2b" stroke-width="8"/>
+  </g>
+</svg>
