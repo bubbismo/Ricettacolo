@@ -33,3 +33,14 @@ export async function loadForPdf(recipes: Recipe[], onProgress?: (done: number, 
   }
   return out
 }
+
+/** L'icona dell'app (PNG) per il marchio sui PDF; se non si riesce a leggerla il PDF esce comunque, senza icona. */
+export async function loadLogo(): Promise<Uint8Array | undefined> {
+  try {
+    const res = await fetch(new URL(`${import.meta.env.BASE_URL}pwa-192x192.png`, location.href))
+    if (!res.ok) return undefined
+    return new Uint8Array(await res.arrayBuffer())
+  } catch {
+    return undefined
+  }
+}

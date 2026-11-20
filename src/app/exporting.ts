@@ -2,7 +2,7 @@ import type { Recipe } from '../core/recipe'
 import { backupFileName, buildRicettario } from '../adapters/backup/ricettario'
 import { deliver } from '../adapters/device/files'
 import { reducePhoto } from '../adapters/image/process'
-import { loadForPdf } from '../adapters/pdf/loadPhotos'
+import { loadForPdf, loadLogo } from '../adapters/pdf/loadPhotos'
 
 export type Status = (text: string) => void
 
@@ -11,7 +11,7 @@ export async function exportPdf(recipes: Recipe[], status: Status = () => {}): P
   const { buildPdf, pdfFileName } = await import('../adapters/pdf/recipePdf')
   const sorted = recipes.length > 1 ? [...recipes].sort((a, b) => a.title.localeCompare(b.title, 'it', { sensitivity: 'base' })) : recipes
   const items = await loadForPdf(sorted, (d, t) => status(`Preparo le foto… ${d} di ${t}`))
-  const blob = await buildPdf(items, { onProgress: (d, t) => status(`Impagino… ${d} di ${t}`) })
+  const blob = await buildPdf(items, { logo: await loadLogo(), onProgress: (d, t) => status(`Impagino… ${d} di ${t}`) })
   status('')
   return deliver(blob, pdfFileName(sorted), { preferShare: true })
 }

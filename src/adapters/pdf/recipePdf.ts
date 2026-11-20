@@ -5,6 +5,8 @@ export interface PdfPhoto { bytes: Uint8Array; width: number; height: number }
 export interface PdfRecipe { recipe: Recipe; photos: PdfPhoto[] }
 
 const PAGE_W = 210, PAGE_H = 297, MARGIN = 14
+/** le foto si fermano sopra il piè di pagina con il marchio */
+const BOTTOM = PAGE_H - 20
 const INDEX_ROWS = 40
 
 type Doc = InstanceType<typeof import('jspdf').jsPDF>
@@ -40,10 +42,10 @@ function drawRecipe(doc: Doc, { recipe: r, photos }: PdfRecipe) {
 
   photos.forEach((p, i) => {
     // la prima foto sta sotto l'intestazione se c'è spazio sufficiente, le altre hanno una pagina intera
-    if (i > 0 || PAGE_H - MARGIN - y < 110) {
+    if (i > 0 || BOTTOM - y < 110) {
       if (i > 0 || y > MARGIN + 20) { doc.addPage(); y = MARGIN }
     }
-    const maxW = PAGE_W - 2 * MARGIN, maxH = PAGE_H - MARGIN - y
+    const maxW = PAGE_W - 2 * MARGIN, maxH = BOTTOM - y
     const k = Math.min(maxW / p.width, maxH / p.height)
     const w = p.width * k, h = p.height * k
     doc.addImage(p.bytes, 'JPEG', MARGIN + (maxW - w) / 2, y, w, h, undefined, 'FAST')
@@ -51,16 +53,18 @@ function drawRecipe(doc: Doc, { recipe: r, photos }: PdfRecipe) {
   })
 }
 
-function drawIndex(doc: Doc, items: PdfRecipe[], startPages: number[], indexPages: number) {
+function drawIndex(doc: Doc, items: PdfRecipe[], startPages: number[], indexPages: number, logo?: Uint8Array) {
   for (let p = 0; p < indexPages; p++) {
     doc.setPage(p + 1)
     let y = MARGIN + 6
     if (p === 0) {
+      const tx = logo ? MARGIN + 22 : MARGIN
+      if (logo) doc.addImage(logo, 'PNG', MARGIN, y - 9, 18, 18)
       doc.setFont('helvetica', 'bold').setFontSize(26).setTextColor(60, 36, 20)
-      doc.text('Ricettario', MARGIN, y)
+      doc.text('Ricettacolo', tx, y)
       doc.setFont('helvetica', 'normal').setFontSize(11).setTextColor(120, 100, 85)
-      doc.text(`${items.length} ricette · ${formatDate(new Date().toISOString().slice(0, 10))}`, MARGIN, y + 7)
-      y += 18
+      doc.text(`Ricettario · ${items.length} ricette · ${formatDate(new Date().toISOString().slice(0, 10))}`, tx, y + 7)
+      y += 22
     }
     doc.setFontSize(11).setTextColor(60, 36, 20)
     items.slice(p * INDEX_ROWS, (p + 1) * INDEX_ROWS).forEach((it, k) => {
@@ -77,7 +81,10 @@ function drawIndex(doc: Doc, items: PdfRecipe[], startPages: number[], indexPage
  * Impagina una o più ricette: intestazione con i metadati e le foto in ordine, ogni pagina il più grande possibile.
  * Con più ricette aggiunge un indice con i numeri di pagina.
  */
-export async function buildPdf(items: PdfRecipe[], opts: { onProgress?: (done: number, total: number) => void } = {}): Promise<Blob> {
+export async function buildPdf(
+  items: PdfRecipe[],
+  opts: { onProgress?: (done: number, total: number) => void; /** icona PNG dell'app, per il marchio su ogni pagina */ logo?: Uint8Array } = {},
+): Promise<Blob> {
   const { jsPDF } = await import('jspdf') // caricato solo quando serve
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true })
   const multi = items.length > 1
@@ -92,13 +99,19 @@ export async function buildPdf(items: PdfRecipe[], opts: { onProgress?: (done: n
     opts.onProgress?.(i + 1, items.length)
     await new Promise((r) => setTimeout(r)) // lascia respirare l'interfaccia
   }
-  if (multi) drawIndex(doc, items, startPages, indexPages)
+  if (multi) drawIndex(doc, items, startPages, indexPages, opts.logo)
 
+  // piè di pagina su ogni pagina: icona + nome dell'app a sinistra, numero di pagina a destra
   const pages = doc.getNumberOfPages()
-  doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(150, 130, 115)
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p)
-    doc.text(String(p), PAGE_W / 2, PAGE_H - 6, { align: 'center' })
+    const base = PAGE_H - 9
+    let tx = MARGIN
+    if (opts.logo) { doc.addImage(opts.logo, 'PNG', MARGIN, base - 6, 8, 8); tx += 10.5 }
+    doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(90, 42, 20)
+    doc.text('Ricettacolo', tx, base)
+    doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(150, 130, 115)
+    doc.text(String(p), PAGE_W - MARGIN, base, { align: 'right' })
   }
   return doc.output('blob')
 }
