@@ -17,6 +17,16 @@ Le ricette vivono nella memoria del telefono. Se il telefono viene cambiato o l'
 in **Impostazioni → Backup** si salva un file `.ricettario` con tutto, da conservare in un posto sicuro.
 Lo stesso file serve per passare le ricette a un altro telefono (**Importa**): l'importazione unisce senza cancellare.
 
+## Cosa sa fare
+
+- **Archivio** con ricerca, filtri e ordinamenti; foto ritagliate e raddrizzate sul telefono.
+- **Da sistemare**: tante foto insieme, da trasformare in ricette con calma.
+- **Modalità cucina**: schermo acceso, zoom a due dita, scorrimento tra le pagine.
+- **Oggi**: una ricetta a caso, filtrabile.
+- **Testo facoltativo**: lettura del testo da pagine stampate e screenshot (OCR italiano, tutto sul telefono; la prima volta serve la
+  connessione per scaricare il lettore), testo diretto dai PDF, lettura a voce.
+- **PDF** di una ricetta, di una selezione o di tutto il ricettario; **backup** `.ricettario` per passare tutto a un altro telefono.
+
 ## Sviluppo
 
 ```bash
@@ -24,7 +34,7 @@ npm install
 npm run dev        # sviluppo (http://localhost:5173/Ricettacolo/)
 npm test           # test della logica (hash, unione, ricerca, backup)
 npm run check      # controllo dei tipi
-npm run build      # build per la pubblicazione
+npm run build      # build per la pubblicazione (copia prima in public/ocr i file dell'OCR, non versionati)
 npm run icons      # rigenera le icone da public/favicon.svg
 ```
 

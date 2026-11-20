@@ -3,6 +3,7 @@
   import { go } from '../../app/router.svelte'
   import { deleteInboxItem, putInboxItems } from '../../adapters/storage/db'
   import { processFile } from '../../adapters/image/process'
+  import { importPdf, isPdf } from '../../adapters/pdf/importPdf'
   import { newId } from '../../core/recipe'
   import Photo from '../components/Photo.svelte'
 
@@ -20,8 +21,11 @@
     const base = Date.now()
     for (const [i, f] of files.entries()) {
       try {
-        const np = await processFile(f)
-        await putInboxItems([{ id: newId(), photoId: np.photo.id, addedAt: new Date(base + i).toISOString() }], [np])
+        // un PDF diventa una foto per pagina (il testo, se c'è, si può rileggere dalle foto quando si sistema la ricetta)
+        const nps = isPdf(f) ? (await importPdf(f)).photos : [await processFile(f)]
+        for (const [k, np] of nps.entries()) {
+          await putInboxItems([{ id: newId(), photoId: np.photo.id, addedAt: new Date(base + i * 1000 + k).toISOString() }], [np])
+        }
         await store.load()
       } catch {
         failed.push(f.name || `foto ${i + 1}`)
@@ -44,7 +48,7 @@
 
   <div class="row" style="margin:12px 0">
     <label class="btn" style="text-align:center">🖼 Dalla galleria
-      <input type="file" accept="image/*" multiple hidden disabled={!!progress} onchange={add} />
+      <input type="file" accept="image/*,application/pdf" multiple hidden disabled={!!progress} onchange={add} />
     </label>
     <label class="btn" style="text-align:center">📷 Scatta
       <input type="file" accept="image/*" capture="environment" hidden disabled={!!progress} onchange={add} />

@@ -7,6 +7,7 @@
   import { deliver } from '../../adapters/device/files'
   import { formatBytes, markBackupDone, storageUsage } from '../../adapters/device/storage'
   import { formatDate } from '../../core/recipe'
+  import { exportPdf } from '../../app/exporting'
 
   let quality = $state<PhotoQuality>('piena')
   let busy = $state('')
@@ -29,6 +30,16 @@
       }
     } catch (e) {
       message = `Backup non riuscito: ${e instanceof Error ? e.message : e}`
+    } finally { busy = '' }
+  }
+
+  async function pdfAll() {
+    busy = 'pdf'; message = ''; result = null
+    try {
+      const res = await exportPdf(store.recipes, (t) => (message = t))
+      message = res === 'downloaded' ? 'PDF del ricettario salvato nei download.' : res === 'shared' ? 'PDF condiviso.' : ''
+    } catch (e) {
+      message = `PDF non riuscito: ${e instanceof Error ? e.message : e}`
     } finally { busy = '' }
   }
 
@@ -92,6 +103,9 @@
     </div>
     <button class="btn primary block" style="margin-top:12px" disabled={!!busy || store.recipes.length === 0} onclick={exportAll}>
       {busy === 'export' ? 'Preparo il backup…' : '💾 Salva il backup di tutto'}
+    </button>
+    <button class="btn block" style="margin-top:10px" disabled={!!busy || store.recipes.length === 0} onclick={pdfAll}>
+      {busy === 'pdf' ? 'Preparo il PDF…' : '📄 PDF di tutto il ricettario (da stampare)'}
     </button>
     <label class="btn block" style="margin-top:10px;text-align:center">
       {busy === 'import' ? 'Importo…' : '📥 Importa un file .ricettario'}

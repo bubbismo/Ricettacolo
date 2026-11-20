@@ -4,6 +4,8 @@
   import { back, replace } from '../../app/router.svelte'
   import { addCategories, commitRecipe, getPhoto, type NewPhoto } from '../../adapters/storage/db'
   import { buildPhoto, processFile } from '../../adapters/image/process'
+  import { importPdf, isPdf } from '../../adapters/pdf/importPdf'
+  import { recognizer } from '../../adapters/recognizer'
   import { emptyContent, toContent, type Rating, type RecipeContent } from '../../core/recipe'
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
@@ -22,6 +24,12 @@
   let error = $state('')
   let editing = $state<{ index: number; blob: Blob } | null>(null)
   let newCat = $state('')
+  let pdfStatus = $state('')
+  let ocrBusy = $state(false)
+  let ocrFraction = $state(0)
+  let ocrLabel = $state('')
+  let ocrMsg = $state('')
+  let ocrAbort: AbortController | null = null
 
   const snapshot = () => JSON.stringify([{ ...content, photoIds: photos.map((p) => p.id) }])
   const dirty = $derived(ready && snapshot() !== initial)
@@ -50,10 +58,15 @@
     for (const f of files) {
       busy++
       try {
-        photos.push(mkDraft(await processFile(f)))
+        if (isPdf(f)) {
+          const res = await importPdf(f, (d, t) => (pdfStatus = `Leggo il PDF… pagina ${d} di ${t}`))
+          res.photos.forEach((np) => photos.push(mkDraft(np)))
+          // PDF con testo vero: il testo si prende direttamente, senza OCR
+          if (res.text) content.ocrText = content.ocrText ? `${content.ocrText}\n\n${res.text}` : res.text
+        } else photos.push(mkDraft(await processFile(f)))
       } catch {
-        error = `Non riesco a leggere «${f.name}». Prova con una foto JPEG o PNG.`
-      } finally { busy-- }
+        error = isPdf(f) ? `Non riesco ad aprire il PDF «${f.name}».` : `Non riesco a leggere «${f.name}». Prova con una foto JPEG o PNG.`
+      } finally { busy--; pdfStatus = '' }
     }
   }
 
@@ -93,6 +106,36 @@
   })
   const inboxLeft = $derived(store.inbox.filter((it) => !photos.some((p) => p.id === it.photoId)).length)
   const addNext = () => { if (nextInbox) photos.push({ id: nextInbox.photoId, inboxId: nextInbox.id }) }
+
+  async function runOcr() {
+    if (content.ocrText && !confirm('Sostituire il testo già presente con quello letto dalle foto?')) return
+    ocrBusy = true; ocrMsg = ''; ocrFraction = 0; ocrLabel = 'Preparo…'
+    ocrAbort = new AbortController()
+    try {
+      const blobs: Blob[] = []
+      for (const p of photos) {
+        const b = p.fresh ? p.fresh.photo.blob : (await getPhoto(p.id))?.blob
+        if (b) blobs.push(b)
+      }
+      const res = await recognizer.recognize(blobs, {
+        signal: ocrAbort.signal,
+        onProgress: (f, label) => { ocrFraction = f; ocrLabel = label },
+      })
+      content.ocrText = res.rawText || null
+      const filled: string[] = []
+      if (!content.title.trim() && res.title) { content.title = res.title; filled.push('il titolo') }
+      if (!content.mainIngredients.trim() && res.ingredients) { content.mainIngredients = res.ingredients; filled.push('gli ingredienti') }
+      ocrMsg = !res.rawText
+        ? 'Non ho trovato testo leggibile in queste foto.'
+        : `Testo letto${filled.length ? `; ho compilato ${filled.join(' e ')}` : ''}. Controlla e correggi gli errori.`
+    } catch (e) {
+      ocrMsg = e instanceof DOMException && e.name === 'AbortError'
+        ? 'Lettura annullata.'
+        : 'Non riesco a leggere il testo. La prima volta serve la connessione per scaricare il lettore italiano; poi funziona anche senza rete.'
+    } finally {
+      ocrBusy = false; ocrAbort = null
+    }
+  }
 
   const toggleCat = (c: string) => {
     content.categories = content.categories.includes(c) ? content.categories.filter((x) => x !== c) : [...content.categories, c]
@@ -166,11 +209,11 @@
             </div>
           </div>
         {/each}
-        {#if busy}<p class="hint">Preparo la foto…</p>{/if}
+        {#if busy}<p class="hint">{pdfStatus || 'Preparo la foto…'}</p>{/if}
       </div>
       <div class="row" style="margin-top:8px">
         <label class="btn" style="text-align:center">🖼 Dalla galleria
-          <input type="file" accept="image/*" multiple hidden onchange={addFiles} />
+          <input type="file" accept="image/*,application/pdf" multiple hidden onchange={addFiles} />
         </label>
         <label class="btn" style="text-align:center">📷 Scatta
           <input type="file" accept="image/*" capture="environment" hidden onchange={addFiles} />
@@ -233,6 +276,22 @@
       <label for="notes">Note</label>
       <textarea id="notes" class="input" placeholder="es. meno zucchero, cuocere dieci minuti in più" bind:value={content.notes}></textarea>
     </div>
+    <div class="field">
+      <label for="ocr">Testo della ricetta (facoltativo)</label>
+      <p class="hint" style="margin:0 0 8px">Per pagine <b>stampate</b>, screenshot e PDF. Non funziona con lo scritto a mano. Il testo serve per cercare e per la lettura a voce.</p>
+      {#if ocrBusy}
+        <div class="banner" role="status">{ocrLabel}
+          <progress value={ocrFraction} max="1" style="width:100%"></progress>
+          <button class="btn" onclick={() => ocrAbort?.abort()}>Annulla</button>
+        </div>
+      {:else}
+        <button type="button" class="btn block" disabled={photos.length === 0 || busy > 0} onclick={runOcr}>🔍 Leggi il testo dalle foto</button>
+      {/if}
+      {#if ocrMsg}<p class="hint" role="status">{ocrMsg}</p>{/if}
+      <textarea id="ocr" class="input" style="margin-top:8px;min-height:140px" placeholder="Qui compare il testo letto: puoi correggerlo o scriverlo tu"
+        value={content.ocrText ?? ''} oninput={(e) => (content.ocrText = e.currentTarget.value || null)}></textarea>
+    </div>
+
     <div class="field">
       <label for="cooked">Ultima volta cucinata</label>
       <div class="row" style="flex-wrap:nowrap">

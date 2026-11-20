@@ -2,13 +2,11 @@
   import { store } from '../../app/store.svelte'
   import { back, go } from '../../app/router.svelte'
   import { commitRecipe, deleteRecipe } from '../../adapters/storage/db'
-  import { buildRicettario, backupFileName } from '../../adapters/backup/ricettario'
-  import { reducePhoto } from '../../adapters/image/process'
-  import { deliver } from '../../adapters/device/files'
-  import { loadForPdf } from '../../adapters/pdf/loadPhotos'
+  import { exportPackage, exportPdf } from '../../app/exporting'
   import { formatDate, toContent, todayISO, type Rating } from '../../core/recipe'
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
+  import SpeechPlayer from '../components/SpeechPlayer.svelte'
 
   let { id }: { id: string } = $props()
   const r = $derived(store.byId(id))
@@ -36,22 +34,19 @@
     if (!r) return
     busy = true
     try {
-      const { buildPdf, pdfFileName } = await import('../../adapters/pdf/recipePdf')
-      const blob = await buildPdf(await loadForPdf([r]))
-      const res = await deliver(blob, pdfFileName([r]), { preferShare: true })
+      const res = await exportPdf([r], (t) => { if (t) msg = t })
+      msg = ''
       if (res === 'downloaded') toast('PDF salvato nei download')
     } catch (e) {
       toast(`Errore: ${e instanceof Error ? e.message : e}`)
     } finally { busy = false }
   }
 
-  /** Pacchetto reimportabile in un'altra copia dell'app: solo download (la condivisione di sistema rifiuta questo tipo di file). */
   async function savePackage() {
     if (!r) return
     busy = true
     try {
-      const blob = await buildRicettario({ ids: [r.id], photoQuality: 'piena', deps: { reduce: reducePhoto } })
-      await deliver(blob, backupFileName('una', r.title))
+      await exportPackage([r])
       toast('Salvato nei download: per importarlo in un\'altra app usa «Importa» nelle Impostazioni')
     } catch (e) {
       toast(`Errore: ${e instanceof Error ? e.message : e}`)
@@ -94,6 +89,14 @@
       <p class="kv"><b>Ultima volta cucinata</b> {r.lastCookedAt ? formatDate(r.lastCookedAt) : 'mai'}</p>
     </div>
 
+    {#if r.ocrText}
+      <div class="card">
+        <span class="lbl">Testo della ricetta</span>
+        <SpeechPlayer text={r.ocrText} />
+        <details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Mostra il testo</summary><pre class="txt">{r.ocrText}</pre></details>
+      </div>
+    {/if}
+
     {#if r.photoIds.length}<button class="btn primary block" style="margin-bottom:12px" onclick={() => go(`/cucina/${r.id}`)}>🍳 Modalità cucina</button>{/if}
     <button class="btn block" onclick={cookedToday}>👩‍🍳 L'ho cucinata oggi</button>
     <div class="row" style="margin-top:12px">
@@ -114,5 +117,6 @@
   .kv { margin: 6px 0; }
   .kv b { color: var(--muted); font-size: 15px; display: block; }
   .notes { white-space: pre-wrap; }
+  .txt { white-space: pre-wrap; font: inherit; font-size: 16px; margin: 8px 0 0; }
   .line { margin: -6px 0 4px -6px; }
 </style>

@@ -127,13 +127,16 @@ export async function makeThumb(blob: Blob): Promise<Blob> {
   }
 }
 
-/** Versione alleggerita per i backup "ridotti". */
-export async function reducePhoto(blob: Blob): Promise<{ blob: Blob; width: number; height: number }> {
+/** Versione più piccola e compressa di una foto (backup "ridotti", PDF molto grandi). */
+export async function shrinkPhoto(blob: Blob, maxSide: number, quality: number): Promise<{ blob: Blob; width: number; height: number }> {
   const bmp = await decodeBlob(blob)
   try {
-    const c = scaleToCanvas(bmp, 1000)
-    return { blob: await canvasToBlob(c, 0.7), width: c.width, height: c.height }
+    const c = scaleToCanvas(bmp, maxSide)
+    return { blob: await canvasToBlob(c, quality), width: c.width, height: c.height }
   } finally {
     bmp.close()
   }
 }
+
+/** Versione alleggerita per i backup "ridotti". */
+export const reducePhoto = (blob: Blob) => shrinkPhoto(blob, 1000, 0.7)

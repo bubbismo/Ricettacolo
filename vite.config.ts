@@ -29,7 +29,16 @@ export default defineConfig({
           { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,ico,json,wasm}'], maximumFileSizeToCacheInBytes: 8 * 1024 * 1024 },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,json}'],
+        // l'OCR (qualche MB) non si scarica all'installazione: viene tenuto in cache la prima volta che si usa
+        globIgnores: ['ocr/**'],
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        runtimeCaching: [
+          { urlPattern: ({ url }) => url.pathname.includes('/ocr/') || url.pathname.endsWith('.mjs'), handler: 'CacheFirst',
+            options: { cacheName: 'pesanti', expiration: { maxEntries: 20 } } },
+        ],
+      },
     }),
   ],
   test: { include: ['src/**/*.test.ts'], environment: 'node' },

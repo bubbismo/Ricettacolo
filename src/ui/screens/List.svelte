@@ -4,8 +4,13 @@
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
   import type { Filters } from '../../core/search'
+  import { exportPackage, exportPdf } from '../../app/exporting'
 
   let showFilters = $state(false)
+  let selecting = $state(false)
+  let selected = $state<string[]>([])
+  let busy = $state(false)
+  let status = $state('')
   const f = store.filters
 
   const sorts: { v: Filters['sort']; t: string }[] = [
@@ -16,13 +21,40 @@
   )
   const list = $derived(store.visible)
 
+  const chosen = $derived(store.recipes.filter((r) => selected.includes(r.id)))
+  const toggle = (id: string) => { selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id] }
+  function endSelect() { selecting = false; selected = [] }
+  const selectAllVisible = () => { selected = list.map((r) => r.id) }
+
+  async function doPdf() {
+    busy = true
+    try {
+      const res = await exportPdf(chosen, (t) => (status = t))
+      status = res === 'downloaded' ? 'PDF salvato nei download' : res === 'shared' ? 'PDF condiviso' : ''
+    } catch (e) { status = `Errore: ${e instanceof Error ? e.message : e}` } finally { busy = false }
+  }
+  async function doPackage() {
+    busy = true
+    try {
+      await exportPackage(chosen)
+      status = 'Salvato nei download. Per importarlo in un\'altra app usa «Importa» nelle Impostazioni.'
+    } catch (e) { status = `Errore: ${e instanceof Error ? e.message : e}` } finally { busy = false }
+  }
+
   function reset() {
     f.category = null; f.minRating = 0; f.favoritesOnly = false; f.cooked = 'all'
   }
 </script>
 
 <div class="page">
-  <div class="topbar"><h1>Ricettacolo</h1></div>
+  <div class="topbar">
+    <h1>Ricettacolo</h1>
+    {#if store.recipes.length}
+      <button class="btn" style="min-height:44px;padding:6px 14px" onclick={() => (selecting ? endSelect() : (selecting = true))}>
+        {selecting ? 'Fine' : '☑ Seleziona'}
+      </button>
+    {/if}
+  </div>
 
   {#if store.backupDue}
     <div class="banner">
@@ -88,9 +120,10 @@
     <ul class="grid">
       {#each list as r (r.id)}
         <li>
-          <button class="rc" onclick={() => go(`/r/${r.id}`)}>
+          <button class="rc" class:sel={selected.includes(r.id)} onclick={() => (selecting ? toggle(r.id) : go(`/r/${r.id}`))}>
             <div class="thumb">
               {#if r.photoIds[0]}<Photo id={r.photoIds[0]} alt="" />{:else}<span class="noimg">🍽</span>{/if}
+              {#if selecting}<span class="check" aria-hidden="true">{selected.includes(r.id) ? '✓' : ''}</span>{/if}
               {#if r.favorite}<span class="heart" aria-label="Preferita">♥</span>{/if}
               {#if r.photoIds.length > 1}<span class="pages">{r.photoIds.length} pag.</span>{/if}
             </div>
@@ -106,7 +139,22 @@
   {/if}
 </div>
 
-<a class="fab" href="#/nuova" aria-label="Aggiungi ricetta">+</a>
+{#if selecting}
+  <div class="selbar">
+    <div>
+      <p><b>{selected.length}</b> {selected.length === 1 ? 'selezionata' : 'selezionate'}
+        <button class="lnk" onclick={selectAllVisible}>Tutte quelle in elenco</button>
+        {#if selected.length}<button class="lnk" onclick={() => (selected = [])}>Nessuna</button>{/if}</p>
+      {#if status}<p class="st" role="status">{status}</p>{/if}
+      <div class="row">
+        <button class="btn primary" disabled={busy || !selected.length} onclick={doPdf}>{busy ? 'Attendi…' : '📄 PDF'}</button>
+        <button class="btn" disabled={busy || !selected.length} onclick={doPackage}>📦 Per un'altra app</button>
+      </div>
+    </div>
+  </div>
+{:else}
+  <a class="fab" href="#/nuova" aria-label="Aggiungi ricetta">+</a>
+{/if}
 
 <style>
   sup { font-size: 12px; color: var(--accent); font-weight: 700; }
@@ -114,6 +162,14 @@
   .rc { width: 100%; text-align: left; padding: 0; border: 1.5px solid var(--line); border-radius: 16px; background: var(--card); overflow: hidden; display: block; }
   .thumb { position: relative; aspect-ratio: 4 / 3; background: var(--line); overflow: hidden; display: grid; place-items: center; }
   .noimg { font-size: 40px; opacity: .6; }
+  .rc.sel { outline: 3px solid var(--accent); }
+  .check { position: absolute; top: 6px; left: 6px; width: 28px; height: 28px; border-radius: 50%; background: var(--card); border: 2px solid var(--accent); color: var(--accent); display: grid; place-items: center; font-weight: 800; }
+  .rc.sel .check { background: var(--accent); color: var(--accent-ink); }
+  .selbar { position: fixed; left: 0; right: 0; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); z-index: 25; background: var(--bg); border-top: 1.5px solid var(--line); padding: 10px 16px; }
+  .selbar > div { max-width: 600px; margin: 0 auto; }
+  .selbar p { margin: 0 0 8px; font-size: 16px; }
+  .selbar .st { color: var(--muted); font-size: 15px; }
+  .lnk { background: none; border: 0; color: var(--accent); font-size: 15px; font-weight: 600; padding: 4px 8px; text-decoration: underline; }
   .heart { position: absolute; top: 6px; right: 8px; color: var(--accent); font-size: 22px; text-shadow: 0 0 4px #fff; }
   .pages { position: absolute; bottom: 6px; left: 6px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 99px; }
   .meta { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 2px; }

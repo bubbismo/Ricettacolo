@@ -4,6 +4,7 @@
   import { back } from '../../app/router.svelte'
   import { getPhoto } from '../../adapters/storage/db'
   import { keepAwake, type AwakeMode } from '../../adapters/device/wakelock'
+  import SpeechPlayer from '../components/SpeechPlayer.svelte'
 
   let { id }: { id: string } = $props()
   const r = $derived(store.byId(id))
@@ -184,7 +185,9 @@
     <button class="nav r" aria-label="Pagina successiva" disabled={index === urls.length - 1} onclick={() => goPage(1)}>›</button>
   {/if}
 
-  {#if hint}<p class="hint-bar">Pizzica per ingrandire · doppio tocco per lo zoom{urls.length > 1 ? ' · scorri per cambiare pagina' : ''}</p>{/if}
+  {#if r?.ocrText}<div class="speak"><SpeechPlayer text={r.ocrText} compact /></div>{/if}
+
+  {#if hint}<p class="hint-bar" class:up={!!r?.ocrText}>Pizzica per ingrandire · doppio tocco per lo zoom{urls.length > 1 ? ' · scorri per cambiare pagina' : ''}</p>{/if}
 </div>
 
 <style>
@@ -201,5 +204,7 @@
   .nav { position: absolute; top: 50%; margin-top: -24px; width: 40px; height: 64px; margin-top: -32px; font-size: 32px; opacity: .8; }
   .nav.l { left: 4px; } .nav.r { right: 4px; }
   .nav:disabled { opacity: .2; }
+  .speak { position: absolute; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); background: rgba(40, 30, 24, .85); padding: 8px; border-radius: 14px; }
+  .hint-bar.up { bottom: calc(env(safe-area-inset-bottom) + 84px); }
   .hint-bar { position: absolute; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 14px); margin: 0; text-align: center; background: rgba(40, 30, 24, .8); padding: 10px 12px; border-radius: 12px; font-size: 14px; pointer-events: none; }
 </style>
