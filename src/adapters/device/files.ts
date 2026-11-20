@@ -14,16 +14,23 @@ export function canShareFiles(file: File): boolean {
   return typeof navigator.canShare === 'function' && typeof navigator.share === 'function' && navigator.canShare({ files: [file] })
 }
 
-/** @returns 'shared' | 'downloaded' | 'cancelled' */
+/**
+ * Prova la condivisione di sistema (WhatsApp, Gmail, Drive…). Alcuni telefoni accettano solo estensioni note:
+ * se `.ricettario` viene rifiutato si riprova con `.ricettario.zip` (l'importazione legge il contenuto, non il nome).
+ * @returns 'shared' | 'downloaded' | 'cancelled'
+ */
 export async function deliver(blob: Blob, name: string, opts: { preferShare?: boolean } = {}): Promise<'shared' | 'downloaded' | 'cancelled'> {
-  const file = new File([blob], name, { type: blob.type || 'application/octet-stream' })
-  if (opts.preferShare && canShareFiles(file)) {
-    try {
-      await navigator.share({ files: [file], title: name })
-      return 'shared'
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled'
-      // altri errori (es. gesto utente scaduto): ripiega sul download
+  if (opts.preferShare && typeof navigator.share === 'function') {
+    const candidates = [name, `${name}.zip`].map((n) => new File([blob], n, { type: blob.type || 'application/zip' }))
+    const file = candidates.find((f) => canShareFiles(f))
+    if (file) {
+      try {
+        await navigator.share({ files: [file], title: name })
+        return 'shared'
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled'
+        // altri errori (es. gesto utente scaduto): ripiega sul download
+      }
     }
   }
   download(blob, name)
