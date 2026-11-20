@@ -7,10 +7,13 @@
   import View from './screens/View.svelte'
   import Edit from './screens/Edit.svelte'
   import Settings from './screens/Settings.svelte'
+  import Inbox from './screens/Inbox.svelte'
+  import Today from './screens/Today.svelte'
+  import Cook from './screens/Cook.svelte'
 
   onMount(() => { void store.init() })
   const r = $derived(router.route)
-  const showTabs = $derived(r.name === 'list' || r.name === 'settings')
+  const showTabs = $derived(r.name === 'list' || r.name === 'settings' || r.name === 'inbox' || r.name === 'today')
 </script>
 
 {#if pwaUpdate.ready}
@@ -23,6 +26,10 @@
 {#if r.name === 'list'}<List />
 {:else if r.name === 'view'}{#key r.id}<View id={r.id} />{/key}
 {:else if r.name === 'edit'}{#key r.id}<Edit id={r.id} />{/key}
+{:else if r.name === 'inboxEdit'}{#key r.itemId}<Edit id={null} inboxId={r.itemId} />{/key}
+{:else if r.name === 'cook'}{#key r.id}<Cook id={r.id} />{/key}
+{:else if r.name === 'inbox'}<Inbox />
+{:else if r.name === 'today'}<Today />
 {:else if r.name === 'settings'}<Settings />
 {/if}
 
@@ -30,6 +37,8 @@
   <div class="tabbar">
     <nav aria-label="Sezioni">
       <a href="#/" aria-current={r.name === 'list' ? 'page' : undefined}><span>📖</span>Ricette</a>
+      <a href="#/oggi" aria-current={r.name === 'today' ? 'page' : undefined}><span>🎲</span>Oggi</a>
+      <a href="#/sistema" aria-current={r.name === 'inbox' ? 'page' : undefined}><span class="ico">📥{#if store.inbox.length}<b class="badge">{store.inbox.length}</b>{/if}</span>Da sistemare</a>
       <a href="#/impostazioni" aria-current={r.name === 'settings' ? 'page' : undefined}><span>⚙️</span>Impostazioni</a>
     </nav>
   </div>

@@ -1,11 +1,12 @@
-import { listCategories, listRecipes, getMeta } from '../adapters/storage/db'
+import { listCategories, listInbox, listRecipes, getMeta } from '../adapters/storage/db'
 import { backupReminderDue, getLastBackup, requestPersistence } from '../adapters/device/storage'
 import { defaultFilters, searchRecipes, type Filters } from '../core/search'
-import type { Recipe } from '../core/recipe'
+import type { InboxItem, Recipe } from '../core/recipe'
 
 class Store {
   recipes = $state<Recipe[]>([])
   categories = $state<string[]>([])
+  inbox = $state<InboxItem[]>([])
   loaded = $state(false)
   lastBackup = $state<string | undefined>(undefined)
   persisted = $state<boolean | undefined>(undefined)
@@ -23,10 +24,11 @@ class Store {
   }
 
   async load(): Promise<void> {
-    const [recipes, categories, last, persisted] = await Promise.all([
-      listRecipes(), listCategories(), getLastBackup(), getMeta<boolean>('persisted'),
+    const [recipes, categories, inbox, last, persisted] = await Promise.all([
+      listRecipes(), listCategories(), listInbox(), getLastBackup(), getMeta<boolean>('persisted'),
     ])
     this.recipes = recipes
+    this.inbox = inbox
     this.categories = categories
     this.lastBackup = last
     this.persisted = persisted

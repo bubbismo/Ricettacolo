@@ -3,12 +3,20 @@ export type Route =
   | { name: 'view'; id: string }
   | { name: 'edit'; id: string | null }
   | { name: 'settings' }
+  | { name: 'inbox' }
+  | { name: 'inboxEdit'; itemId: string }
+  | { name: 'cook'; id: string }
+  | { name: 'today' }
 
 export function parse(hash: string): Route {
   const p = hash.replace(/^#\/?/, '').split('/')
   if (p[0] === 'r' && p[1]) return { name: 'view', id: p[1] }
   if (p[0] === 'e' && p[1]) return { name: 'edit', id: p[1] }
   if (p[0] === 'nuova') return { name: 'edit', id: null }
+  if (p[0] === 'sistema' && p[1]) return { name: 'inboxEdit', itemId: p[1] }
+  if (p[0] === 'sistema') return { name: 'inbox' }
+  if (p[0] === 'cucina' && p[1]) return { name: 'cook', id: p[1] }
+  if (p[0] === 'oggi') return { name: 'today' }
   if (p[0] === 'impostazioni') return { name: 'settings' }
   return { name: 'list' }
 }

@@ -97,8 +97,13 @@ export async function commitRecipe(opts: {
     await tx.objectStore('thumbs').put(thumb)
   }
   await tx.objectStore('recipes').put(recipe)
-  for (const id of opts.consumeInbox ?? []) await tx.objectStore('inbox').delete(id)
-  await gcPhotos(tx, existing?.photoIds ?? [])
+  // le foto della cassetta usate (o sostituite da una versione ritagliata) lasciano la cassetta; quelle non più usate si eliminano
+  const orphans = new Set(existing?.photoIds ?? [])
+  for (const iid of opts.consumeInbox ?? []) {
+    const item = await tx.objectStore('inbox').get(iid)
+    if (item) { orphans.add(item.photoId); await tx.objectStore('inbox').delete(iid) }
+  }
+  await gcPhotos(tx, orphans)
   await tx.done
   return recipe
 }
@@ -153,6 +158,17 @@ export async function putInboxItems(items: InboxItem[], photos: NewPhoto[]): Pro
     await tx.objectStore('thumbs').put(thumb)
   }
   for (const i of items) await tx.objectStore('inbox').put(i)
+  await tx.done
+}
+
+/** Scarta una foto dalla cassetta (e dall'archivio se nessun altro la usa). */
+export async function deleteInboxItem(id: string): Promise<void> {
+  const db = await getDb()
+  const tx = db.transaction(ALL, 'readwrite')
+  const item = await tx.objectStore('inbox').get(id)
+  if (!item) return
+  await tx.objectStore('inbox').delete(id)
+  await gcPhotos(tx, [item.photoId])
   await tx.done
 }
 

@@ -80,4 +80,22 @@ describe('backup e importazione', () => {
     await db.deleteRecipe(r.id)
     expect(await db.hasPhoto(p2.photo.id)).toBe(false)
   })
+
+  it('cassetta: la foto usata esce dalla cassetta, quella sostituita da un ritaglio sparisce, quella tolta resta', async () => {
+    const [a, b, c, crop] = await Promise.all(['a', 'b', 'c', 'crop'].map(fakePhoto))
+    const now = new Date().toISOString()
+    await db.putInboxItems(
+      [a, b, c].map((p, i) => ({ id: `i${i}`, photoId: p.photo.id, addedAt: now })), [a, b, c],
+    )
+    await db.commitRecipe({
+      content: { ...emptyContent(), title: 'X', photoIds: [crop.photo.id, b.photo.id] },
+      newPhotos: [crop], consumeInbox: ['i0', 'i1'],
+    })
+    expect((await db.listInbox()).map((i) => i.id)).toEqual(['i2'])
+    expect(await db.hasPhoto(a.photo.id)).toBe(false) // sostituita dal ritaglio
+    expect(await db.hasPhoto(b.photo.id)).toBe(true) // usata dalla ricetta
+    expect(await db.hasPhoto(c.photo.id)).toBe(true) // ancora in cassetta
+    await db.deleteInboxItem('i2')
+    expect(await db.hasPhoto(c.photo.id)).toBe(false)
+  })
 })

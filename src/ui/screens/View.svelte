@@ -94,7 +94,8 @@
       <p class="kv"><b>Ultima volta cucinata</b> {r.lastCookedAt ? formatDate(r.lastCookedAt) : 'mai'}</p>
     </div>
 
-    <button class="btn primary block" onclick={cookedToday}>👩‍🍳 L'ho cucinata oggi</button>
+    {#if r.photoIds.length}<button class="btn primary block" style="margin-bottom:12px" onclick={() => go(`/cucina/${r.id}`)}>🍳 Modalità cucina</button>{/if}
+    <button class="btn block" onclick={cookedToday}>👩‍🍳 L'ho cucinata oggi</button>
     <div class="row" style="margin-top:12px">
       <button class="btn" onclick={() => go(`/e/${r.id}`)}>✏️ Modifica</button>
       <button class="btn" disabled={busy} onclick={sharePdf}>{busy ? 'Preparo…' : '📤 Condividi PDF'}</button>

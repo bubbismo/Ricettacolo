@@ -9,9 +9,9 @@
   import Stars from '../components/Stars.svelte'
   import PhotoEditor from '../components/PhotoEditor.svelte'
 
-  let { id }: { id: string | null } = $props()
+  let { id, inboxId = null }: { id: string | null; inboxId?: string | null } = $props()
 
-  interface Draft { id: string; fresh?: NewPhoto; url?: string }
+  interface Draft { id: string; fresh?: NewPhoto; url?: string; inboxId?: string }
 
   let ready = $state(false)
   let content = $state<RecipeContent>(emptyContent())
@@ -30,8 +30,10 @@
     if (ready || !store.loaded) return
     const r = id ? store.byId(id) : undefined
     if (id && !r) { error = 'Ricetta non trovata.'; return }
+    const item = inboxId ? store.inbox.find((i) => i.id === inboxId) : undefined
+    if (inboxId && !item) { error = 'Questa foto non è più nella cassetta.'; return }
     content = r ? toContent(r) : emptyContent()
-    photos = content.photoIds.map((pid) => ({ id: pid }))
+    photos = item ? [{ id: item.photoId, inboxId: item.id }] : content.photoIds.map((pid) => ({ id: pid }))
     initial = snapshot()
     ready = true
   })
@@ -76,10 +78,21 @@
     busy++
     try {
       const old = photos[i]
-      photos[i] = mkDraft(await buildPhoto(canvas))
+      photos[i] = { ...mkDraft(await buildPhoto(canvas)), inboxId: old.inboxId }
       if (old.url) URL.revokeObjectURL(old.url)
     } finally { busy-- }
   }
+
+  /** Prossima foto della cassetta dopo quelle già nella bozza (poi, se finite, la prima disponibile). */
+  const nextInbox = $derived.by(() => {
+    if (!inboxId) return undefined
+    const used = new Set(photos.map((p) => p.id))
+    const list = store.inbox
+    const last = Math.max(-1, ...list.map((it, i) => (used.has(it.photoId) ? i : -1)))
+    return list.slice(last + 1).find((it) => !used.has(it.photoId)) ?? list.find((it) => !used.has(it.photoId))
+  })
+  const inboxLeft = $derived(store.inbox.filter((it) => !photos.some((p) => p.id === it.photoId)).length)
+  const addNext = () => { if (nextInbox) photos.push({ id: nextInbox.photoId, inboxId: nextInbox.id }) }
 
   const toggleCat = (c: string) => {
     content.categories = content.categories.includes(c) ? content.categories.filter((x) => x !== c) : [...content.categories, c]
@@ -104,10 +117,13 @@
         // $state.snapshot: gli oggetti reattivi di Svelte non si possono clonare dentro IndexedDB
         content: { ...$state.snapshot(content), photoIds: photos.map((p) => p.id) },
         newPhotos: photos.flatMap((p) => (p.fresh ? [$state.snapshot(p.fresh) as NewPhoto] : [])),
+        // le foto della cassetta usate in questa ricetta ne escono; quelle tolte dalla bozza restano in cassetta
+        consumeInbox: photos.flatMap((p) => (p.inboxId ? [p.inboxId] : [])),
       })
       await store.load()
       initial = snapshot()
-      if (id) back(`/r/${saved.id}`)
+      if (inboxId) replace('/sistema')
+      else if (id) back(`/r/${saved.id}`)
       else replace(`/r/${saved.id}`)
     } catch (e) {
       error = `Salvataggio non riuscito: ${e instanceof Error ? e.message : e}`
@@ -123,7 +139,7 @@
 <div class="page">
   <div class="topbar">
     <button class="iconbtn" aria-label="Indietro" onclick={cancel}>←</button>
-    <h1>{id ? 'Modifica ricetta' : 'Nuova ricetta'}</h1>
+    <h1>{id ? 'Modifica ricetta' : inboxId ? 'Sistema la ricetta' : 'Nuova ricetta'}</h1>
   </div>
 
   {#if !ready}
@@ -160,6 +176,11 @@
           <input type="file" accept="image/*" capture="environment" hidden onchange={addFiles} />
         </label>
       </div>
+      {#if inboxId}
+        <button class="btn block" style="margin-top:8px" disabled={!nextInbox} onclick={addNext}>
+          ➕ Aggiungi anche la foto successiva{nextInbox ? ` (${inboxLeft} in cassetta)` : ' (nessuna altra)'}
+        </button>
+      {/if}
       <p class="hint">Più pagine? Aggiungile in ordine: puoi riordinarle con le frecce.</p>
     </div>
 
