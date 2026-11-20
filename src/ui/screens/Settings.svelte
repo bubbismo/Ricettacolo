@@ -21,13 +21,11 @@
     busy = 'export'; message = ''; result = null
     try {
       const blob = await buildRicettario({ photoQuality: quality, deps: { reduce: reducePhoto } })
-      const res = await deliver(blob, backupFileName('tutto'), { preferShare: true })
-      if (res !== 'cancelled') {
+      await deliver(blob, backupFileName('tutto'))
+      {
         await markBackupDone()
         await store.load()
-        message = res === 'shared'
-          ? `Backup pronto (${formatBytes(blob.size)}). Salvalo in un posto sicuro (File, Drive, e-mail a te stessa).`
-          : `Backup scaricato (${formatBytes(blob.size)}). Controlla la cartella dei download.`
+        message = `Backup scaricato (${formatBytes(blob.size)}). Trovi il file nei download: conservalo in un posto sicuro (Drive, e-mail a te stessa) o mandalo all'altro telefono.`
       }
     } catch (e) {
       message = `Backup non riuscito: ${e instanceof Error ? e.message : e}`

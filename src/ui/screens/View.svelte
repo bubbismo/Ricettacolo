@@ -5,6 +5,7 @@
   import { buildRicettario, backupFileName } from '../../adapters/backup/ricettario'
   import { reducePhoto } from '../../adapters/image/process'
   import { deliver } from '../../adapters/device/files'
+  import { loadForPdf } from '../../adapters/pdf/loadPhotos'
   import { formatDate, toContent, todayISO, type Rating } from '../../core/recipe'
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
@@ -31,13 +32,27 @@
     back()
   }
 
-  async function exportOne() {
+  async function sharePdf() {
+    if (!r) return
+    busy = true
+    try {
+      const { buildPdf, pdfFileName } = await import('../../adapters/pdf/recipePdf')
+      const blob = await buildPdf(await loadForPdf([r]))
+      const res = await deliver(blob, pdfFileName([r]), { preferShare: true })
+      if (res === 'downloaded') toast('PDF salvato nei download')
+    } catch (e) {
+      toast(`Errore: ${e instanceof Error ? e.message : e}`)
+    } finally { busy = false }
+  }
+
+  /** Pacchetto reimportabile in un'altra copia dell'app: solo download (la condivisione di sistema rifiuta questo tipo di file). */
+  async function savePackage() {
     if (!r) return
     busy = true
     try {
       const blob = await buildRicettario({ ids: [r.id], photoQuality: 'piena', deps: { reduce: reducePhoto } })
-      const res = await deliver(blob, backupFileName('una', r.title), { preferShare: true })
-      if (res !== 'cancelled') toast(res === 'shared' ? 'Ricetta condivisa' : 'Questo telefono non permette di condividere il file: l\'ho salvato nei download')
+      await deliver(blob, backupFileName('una', r.title))
+      toast('Salvato nei download: per importarlo in un\'altra app usa «Importa» nelle Impostazioni')
     } catch (e) {
       toast(`Errore: ${e instanceof Error ? e.message : e}`)
     } finally { busy = false }
@@ -82,8 +97,9 @@
     <button class="btn primary block" onclick={cookedToday}>👩‍🍳 L'ho cucinata oggi</button>
     <div class="row" style="margin-top:12px">
       <button class="btn" onclick={() => go(`/e/${r.id}`)}>✏️ Modifica</button>
-      <button class="btn" disabled={busy} onclick={exportOne}>📤 Condividi</button>
+      <button class="btn" disabled={busy} onclick={sharePdf}>{busy ? 'Preparo…' : '📤 Condividi PDF'}</button>
     </div>
+    <button class="btn block" style="margin-top:12px" disabled={busy} onclick={savePackage}>📦 Salva per un'altra app</button>
     <button class="btn danger block" style="margin-top:12px" onclick={remove}>Elimina ricetta</button>
   {/if}
 </div>

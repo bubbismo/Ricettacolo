@@ -34,6 +34,6 @@ Pubblicazione: ogni push su `main` esegue controlli, test e build e pubblica su 
 ## Struttura
 
 - `src/core` – logica pura: modello dati, hash, regola di unione, ricerca, migrazioni (con test)
-- `src/adapters` – IndexedDB, backup `.ricettario` (zip), elaborazione immagini, funzioni del dispositivo
+- `src/adapters` – IndexedDB, backup `.ricettario` (zip), PDF, elaborazione immagini, funzioni del dispositivo
 - `src/app` – stato e navigazione
 - `src/ui` – schermate e componenti Svelte
