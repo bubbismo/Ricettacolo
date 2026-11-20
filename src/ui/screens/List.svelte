@@ -110,7 +110,7 @@
     <p class="hint">Caricamento…</p>
   {:else if store.recipes.length === 0}
     <div class="card" style="text-align:center">
-      <div class="empty-bowl"><Steam size={84} tone="tan" count={3} /><span>🍲</span></div>
+      <div class="empty-bowl"><Steam size={84} tone="soft" count={2} /><span>🍲</span></div>
       <h2>Il ricettario è vuoto</h2>
       <p class="hint">Tocca il pulsante + per aggiungere la prima ricetta: basta una foto della pagina.</p>
     </div>

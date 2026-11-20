@@ -12,7 +12,7 @@
     if (leaving) return
     leaving = true
     tick(15)
-    setTimeout(() => (visible = false), reduce ? 250 : 1500)
+    setTimeout(() => (visible = false), reduce ? 250 : 1350)
   }
 </script>
 
@@ -24,7 +24,7 @@
         <button class="logo" aria-label="Entra in Ricettacolo" onclick={enter}>
           <img src={icon} alt="" width="280" height="280" draggable="false" />
         </button>
-        <Steam size={280} />
+        <Steam size={300} />
       </div>
       <h1>Ricettacolo</h1>
       <p class="brand">LilliLab</p>
@@ -36,11 +36,11 @@
 <style>
   #splash { position: fixed; inset: 0; z-index: 200; color: #5a2a14; }
   #splash.leaving { pointer-events: none; }
-  .bg { position: absolute; inset: 0; background: #fbf1df; transition: opacity .7s ease .45s; }
+  .bg { position: absolute; inset: 0; background: #fbf1df; transition: opacity .55s ease .4s; }
   .leaving .bg { opacity: 0; }
   .content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3vh;
-    transition: opacity .55s ease .1s, transform .8s ease-in, filter .55s ease .1s; }
-  .leaving .content { opacity: 0; transform: translateY(-5vh) scale(1.06); filter: blur(5px); }
+    transition: opacity .45s ease .25s, transform .7s ease-in; }
+  .leaving .content { opacity: 0; transform: translate3d(0, -3vh, 0); }
   .stage { position: relative; width: min(62vw, 300px); aspect-ratio: 1; }
   .logo { background: none; border: 0; padding: 0; width: 100%; height: 100%; cursor: pointer; position: relative; z-index: 1;
     animation: pop-in .7s cubic-bezier(.2, .9, .3, 1.15) both, beat 2.4s ease-in-out .7s infinite; }
@@ -54,6 +54,6 @@
   @keyframes beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
   @media (prefers-reduced-motion: reduce) {
     .logo, h1, .brand { animation: none; }
-    .leaving .content { transform: none; filter: none; }
+    .leaving .content { transform: none; }
   }
 </style>
