@@ -8,6 +8,7 @@
   import { formatBytes, markBackupDone, storageUsage } from '../../adapters/device/storage'
   import { formatDate } from '../../core/recipe'
   import { exportPdf } from '../../app/exporting'
+  import { setSplashEnabled, splashEnabled } from '../../app/splash'
 
   let quality = $state<PhotoQuality>('piena')
   let busy = $state('')
@@ -15,6 +16,7 @@
   let result = $state<ImportResult | null>(null)
   let usage = $state<{ used: number; quota: number } | null>(null)
   let newCat = $state('')
+  let splashOn = $state(splashEnabled())
 
   onMount(async () => { usage = await storageUsage() })
 
@@ -126,7 +128,7 @@
   <section class="card">
     <h2>Spazio sul telefono</h2>
     {#if usage}
-      <p style="margin:8px 0 0">Occupato: <b>{formatBytes(usage.used)}</b>{#if usage.quota} su circa {formatBytes(usage.quota)} disponibili{/if}.</p>
+      <p style="margin:8px 0 0">Occupato: <b>{formatBytes(usage.used)}</b>{#if usage.quota}{" "}su circa {formatBytes(usage.quota)} disponibili{/if}.</p>
     {:else}
       <p class="hint">Non riesco a leggere lo spazio occupato su questo dispositivo.</p>
     {/if}
@@ -154,6 +156,12 @@
       <button class="btn" style="flex:none" onclick={addCat}>Aggiungi</button>
     </div>
   </section>
+
+  <label class="card" style="display:flex;gap:12px;align-items:center">
+    <input type="checkbox" checked={splashOn} style="width:24px;height:24px;accent-color:var(--accent)"
+      onchange={(e) => { splashOn = e.currentTarget.checked; setSplashEnabled(splashOn) }} />
+    <span>Mostra la schermata iniziale all'apertura</span>
+  </label>
 
   <p class="hint" style="text-align:center">Ricettacolo · versione 0.1 · i dati restano solo su questo dispositivo.</p>
 </div>

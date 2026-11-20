@@ -10,11 +10,14 @@
   import Inbox from './screens/Inbox.svelte'
   import Today from './screens/Today.svelte'
   import Cook from './screens/Cook.svelte'
+  import Splash from './Splash.svelte'
 
   onMount(() => { void store.init() })
   const r = $derived(router.route)
   const showTabs = $derived(r.name === 'list' || r.name === 'settings' || r.name === 'inbox' || r.name === 'today')
 </script>
+
+<Splash />
 
 {#if pwaUpdate.ready}
   <div class="banner" style="position:sticky;top:0;z-index:70;margin:0;border-radius:0;text-align:center">
