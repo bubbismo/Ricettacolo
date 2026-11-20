@@ -16,12 +16,18 @@ export function canShareFiles(file: File): boolean {
 
 /**
  * Prova la condivisione di sistema (WhatsApp, Gmail, Drive…). Alcuni telefoni accettano solo estensioni note:
- * se `.ricettario` viene rifiutato si riprova con `.ricettario.zip` (l'importazione legge il contenuto, non il nome).
+ * se `.ricettario` viene rifiutato si riprova con `.zip` e poi con `.txt` (l'importazione legge il contenuto, non il nome).
  * @returns 'shared' | 'downloaded' | 'cancelled'
  */
 export async function deliver(blob: Blob, name: string, opts: { preferShare?: boolean } = {}): Promise<'shared' | 'downloaded' | 'cancelled'> {
   if (opts.preferShare && typeof navigator.share === 'function') {
-    const candidates = [name, `${name}.zip`].map((n) => new File([blob], n, { type: blob.type || 'application/zip' }))
+    const candidates = [
+      new File([blob], name, { type: 'application/zip' }),
+      new File([blob], `${name}.zip`, { type: 'application/zip' }),
+      // ultimo tentativo: Chrome su Android condivide solo tipi noti (testo, immagini, PDF…). Il contenuto resta identico
+      // e l'importazione lo riconosce comunque, perché guarda dentro il file e non il nome.
+      new File([blob], `${name}.txt`, { type: 'text/plain' }),
+    ]
     const file = candidates.find((f) => canShareFiles(f))
     if (file) {
       try {

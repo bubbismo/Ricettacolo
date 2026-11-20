@@ -37,7 +37,7 @@
     try {
       const blob = await buildRicettario({ ids: [r.id], photoQuality: 'piena', deps: { reduce: reducePhoto } })
       const res = await deliver(blob, backupFileName('una', r.title), { preferShare: true })
-      if (res !== 'cancelled') toast(res === 'shared' ? 'Ricetta condivisa' : 'File salvato nei download')
+      if (res !== 'cancelled') toast(res === 'shared' ? 'Ricetta condivisa' : 'Questo telefono non permette di condividere il file: l\'ho salvato nei download')
     } catch (e) {
       toast(`Errore: ${e instanceof Error ? e.message : e}`)
     } finally { busy = false }
