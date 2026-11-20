@@ -74,7 +74,7 @@
     <p class="hint" style="margin:0 0 8px">{store.inbox.length} {store.inbox.length === 1 ? 'foto' : 'foto'} · tocca una foto per farne una ricetta</p>
     <ul class="grid">
       {#each store.inbox as it, i (it.id)}
-        <li>
+        <li style={`--i:${Math.min(i, 12)}`}>
           <button class="th" onclick={() => go(`/sistema/${it.id}`)} aria-label={`Sistema la foto ${i + 1}`}>
             <Photo id={it.photoId} alt="" />
             <span class="n">{i + 1}</span>
@@ -88,7 +88,7 @@
 
 <style>
   .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  li { position: relative; }
+  li { position: relative; animation: rise .4s ease-out both; animation-delay: calc(var(--i, 0) * 35ms); }
   .th { width: 100%; aspect-ratio: 3 / 4; padding: 0; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--line); display: block; position: relative; }
   .n { position: absolute; left: 6px; top: 6px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 13px; padding: 1px 8px; border-radius: 99px; }
   .x { position: absolute; right: 4px; bottom: 4px; width: 44px; height: 44px; border-radius: 12px; border: 0; background: rgba(255, 250, 240, .92); font-size: 20px; }

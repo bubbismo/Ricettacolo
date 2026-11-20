@@ -6,11 +6,20 @@
   import type { Recipe } from '../../core/recipe'
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
+  import { tick } from '../../adapters/device/haptics'
 
   let category = $state<string | null>(null)
   let minRating = $state(0)
   let current = $state<Recipe | null>(null)
   let seen = new Set<string>()
+  let rolling = $state(false)
+
+  function roll() {
+    tick(10)
+    rolling = true
+    setTimeout(() => (rolling = false), 600)
+    another()
+  }
 
   function another() {
     const res = pickNext(store.recipes, { category, minRating }, seen, current?.id)
@@ -61,7 +70,7 @@
         </div>
       </button>
     {/key}
-    <button class="btn primary block" style="margin-top:14px" onclick={another}>🎲 Un'altra</button>
+    <button class="btn primary block" style="margin-top:14px" onclick={roll}><span class="dice" class:rolling>🎲</span> Un'altra</button>
     <div class="row" style="margin-top:10px">
       <button class="btn" onclick={() => go(`/r/${current!.id}`)}>Apri ricetta</button>
       {#if current.photoIds.length}<button class="btn" onclick={() => go(`/cucina/${current!.id}`)}>🍳 Cucina</button>{/if}
@@ -70,7 +79,9 @@
 </div>
 
 <style>
-  .pick { width: 100%; padding: 0; text-align: left; border: 1.5px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--card); display: block; box-shadow: var(--shadow); }
+  .dice { display: inline-block; }
+  .dice.rolling { animation: dice .55s ease-in-out; }
+  .pick { animation: card-in .5s cubic-bezier(.2, .9, .3, 1.15) both; width: 100%; padding: 0; text-align: left; border: 1.5px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--card); display: block; box-shadow: var(--shadow); }
   .img { aspect-ratio: 4 / 3; background: var(--line); display: grid; place-items: center; font-size: 56px; overflow: hidden; }
   .info { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 2px; }
   small { color: var(--muted); font-size: 15px; }

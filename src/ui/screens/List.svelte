@@ -3,6 +3,7 @@
   import { go } from '../../app/router.svelte'
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
+  import Steam from '../components/Steam.svelte'
   import type { Filters } from '../../core/search'
   import { exportPackage, exportPdf } from '../../app/exporting'
 
@@ -109,7 +110,7 @@
     <p class="hint">Caricamento…</p>
   {:else if store.recipes.length === 0}
     <div class="card" style="text-align:center">
-      <p style="font-size:40px;margin:4px 0">📖</p>
+      <div class="empty-bowl"><Steam size={84} tone="tan" count={3} /><span>🍲</span></div>
       <h2>Il ricettario è vuoto</h2>
       <p class="hint">Tocca il pulsante + per aggiungere la prima ricetta: basta una foto della pagina.</p>
     </div>
@@ -118,8 +119,8 @@
   {:else}
     <p class="hint" style="margin:0 0 8px">{list.length} {list.length === 1 ? 'ricetta' : 'ricette'}</p>
     <ul class="grid">
-      {#each list as r (r.id)}
-        <li>
+      {#each list as r, i (r.id)}
+        <li style={`--i:${Math.min(i, 10)}`}>
           <button class="rc" class:sel={selected.includes(r.id)} onclick={() => (selecting ? toggle(r.id) : go(`/r/${r.id}`))}>
             <div class="thumb">
               {#if r.photoIds[0]}<Photo id={r.photoIds[0]} alt="" />{:else}<span class="noimg">🍽</span>{/if}
@@ -158,6 +159,7 @@
 
 <style>
   sup { font-size: 12px; color: var(--accent); font-weight: 700; }
+  .grid li { animation: rise .4s ease-out both; animation-delay: calc(var(--i, 0) * 40ms); }
   .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .rc { width: 100%; text-align: left; padding: 0; border: 1.5px solid var(--line); border-radius: 16px; background: var(--card); overflow: hidden; display: block; }
   .thumb { position: relative; aspect-ratio: 4 / 3; background: var(--line); overflow: hidden; display: grid; place-items: center; }

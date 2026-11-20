@@ -21,10 +21,20 @@ export function parse(hash: string): Route {
   return { name: 'list' }
 }
 
+/** Profondità della schermata: serve a scegliere da che parte "entra" la nuova pagina. */
+const depth = (r: Route): number => (r.name === 'view' ? 1 : r.name === 'edit' || r.name === 'inboxEdit' || r.name === 'cook' ? 2 : 0)
+
 class Router {
   route = $state<Route>(parse(location.hash))
   constructor() {
-    addEventListener('hashchange', () => { this.route = parse(location.hash) })
+    document.documentElement.dataset.nav = 'tab'
+    addEventListener('hashchange', () => {
+      const next = parse(location.hash)
+      const d = depth(next) - depth(this.route)
+      // avanti = entra da destra, indietro = da sinistra, tra schede = sale dolcemente
+      document.documentElement.dataset.nav = d > 0 ? 'forward' : d < 0 ? 'back' : 'tab'
+      this.route = next
+    })
   }
 }
 

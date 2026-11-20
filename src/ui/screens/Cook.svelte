@@ -163,8 +163,8 @@
     onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up} onwheel={wheel}
   >
     {#if urls[index]}
-      <img src={urls[index]} alt={`${r?.title ?? 'Ricetta'}, pagina ${index + 1}`} draggable="false"
-        style={`transform: translate(${tx + dragDx}px, ${ty}px) scale(${scale}); transition: ${active ? 'none' : 'transform .18s ease-out'}`} />
+      {#key index}<img class="pg" src={urls[index]} alt={`${r?.title ?? 'Ricetta'}, pagina ${index + 1}`} draggable="false"
+        style={`transform: translate(${tx + dragDx}px, ${ty}px) scale(${scale}); transition: ${active ? 'none' : 'transform .18s ease-out'}`} />{/key}
     {:else if r && r.photoIds.length === 0}
       <p class="msg">Questa ricetta non ha foto.</p>
     {:else}
@@ -191,9 +191,10 @@
 </div>
 
 <style>
-  .cook { position: fixed; inset: 0; z-index: 50; background: #000; color: #fff; }
+  .cook { animation: fade-in .35s ease-out both; position: fixed; inset: 0; z-index: 50; background: #000; color: #fff; }
   .stage { position: absolute; inset: 0; touch-action: none; overflow: hidden; display: grid; place-items: center; user-select: none; -webkit-user-select: none; }
   img { max-width: 100%; max-height: 100%; object-fit: contain; -webkit-user-drag: none; will-change: transform; }
+  .pg { animation: fade-in .25s ease-out both; }
   .msg { color: #ccc; }
   header { position: absolute; top: 0; left: 0; right: 0; padding: calc(env(safe-area-inset-top) + 8px) 10px 24px; display: flex; gap: 10px; align-items: center;
     background: linear-gradient(#000a, #0000); pointer-events: none; }

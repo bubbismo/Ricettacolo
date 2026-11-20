@@ -6,6 +6,7 @@
   import { formatDate, toContent, todayISO, type Rating } from '../../core/recipe'
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
+  import { tick } from '../../adapters/device/haptics'
   import SpeechPlayer from '../components/SpeechPlayer.svelte'
 
   let { id }: { id: string } = $props()
@@ -18,7 +19,7 @@
     await commitRecipe({ id: r.id, content: { ...toContent(r), ...change } })
     await store.load()
   }
-  const cookedToday = async () => { await patch({ lastCookedAt: todayISO() }); toast('Segnata come cucinata oggi 👩‍🍳') }
+  const cookedToday = async () => { tick(20); await patch({ lastCookedAt: todayISO() }); toast('Segnata come cucinata oggi 👩‍🍳') }
   const setRating = (v: Rating | null) => patch({ rating: v })
 
   function toast(t: string) { msg = t; setTimeout(() => { if (msg === t) msg = '' }, 2500) }
@@ -60,7 +61,7 @@
     <h1>{r?.title || 'Ricetta'}</h1>
     {#if r}
       <button class="iconbtn" aria-label={r.favorite ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}
-        style={r.favorite ? 'color:var(--accent)' : ''} onclick={() => patch({ favorite: !r.favorite })}>{r.favorite ? '♥' : '♡'}</button>
+        style={r.favorite ? 'color:var(--accent)' : ''} onclick={() => { tick(); void patch({ favorite: !r.favorite }) }}>{#key r.favorite}<span class="pop">{r.favorite ? '♥' : '♡'}</span>{/key}</button>
     {/if}
   </div>
 
