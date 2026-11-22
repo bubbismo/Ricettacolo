@@ -1,6 +1,8 @@
 import { putInboxItems } from '../adapters/storage/db'
 import { processFile } from '../adapters/image/process'
 import { interpretShare, type SharedContent } from '../core/share'
+import { parsedToDraft } from '../core/importMap'
+import { importConfig } from './importService.svelte'
 import { newId } from '../core/recipe'
 import { replace } from './router.svelte'
 import { store } from './store.svelte'
@@ -37,8 +39,20 @@ export async function handleShare(): Promise<void> {
   const added = shared.files > 0 ? await importSharedImages(shared.files) : 0
   if (added) await store.load()
 
-  const { link, title, notes } = interpretShare(shared)
-  if (link || notes) {
+  const { link, title, notes, parsed } = interpretShare(shared)
+  if (parsed) {
+    // testo di una ricetta condiviso (anche senza servizio): diviso nei campi, da controllare
+    const d = parsedToDraft(parsed, { link, title: title || parsed.title })
+    store.shareDraft = {
+      link: d.link, title: d.title, mainIngredients: d.mainIngredients, text: d.text, notes: '',
+      notice: { kind: 'ok', text: 'Ho letto il testo che hai condiviso e l\'ho diviso in ingredienti e preparazione. Controlla e correggi prima di salvare.' },
+    }
+    replace('/nuova')
+  } else if (link && importConfig.enabled) {
+    // c'è il servizio: prima si prova a leggere la ricetta dalla pagina
+    store.pendingImport = { link, title }
+    replace('/importa')
+  } else if (link || notes) {
     store.shareDraft = { link, title, notes }
     replace('/nuova')
   } else if (added) {

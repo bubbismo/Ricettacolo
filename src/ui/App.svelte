@@ -12,6 +12,7 @@
   import Today from './screens/Today.svelte'
   import Cook from './screens/Cook.svelte'
   import Splash from './Splash.svelte'
+  import Import from './screens/Import.svelte'
 
   onMount(() => { void store.init().then(handleShare) })
   const r = $derived(router.route)
@@ -34,6 +35,7 @@
 {:else if r.name === 'cook'}{#key r.id}<Cook id={r.id} />{/key}
 {:else if r.name === 'inbox'}<Inbox />
 {:else if r.name === 'today'}<Today />
+{:else if r.name === 'import'}<Import />
 {:else if r.name === 'settings'}<Settings />
 {/if}
 

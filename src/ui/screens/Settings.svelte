@@ -9,6 +9,9 @@
   import { formatDate } from '../../core/recipe'
   import { exportPdf } from '../../app/exporting'
   import { setSplashEnabled, splashEnabled } from '../../app/splash'
+  import { importConfig } from '../../app/importService.svelte'
+  import { testService } from '../../adapters/importer/client'
+  import { normalizeServiceUrl } from '../../core/importService'
 
   let quality = $state<PhotoQuality>('piena')
   let busy = $state('')
@@ -17,6 +20,26 @@
   let usage = $state<{ used: number; quota: number } | null>(null)
   let newCat = $state('')
   let splashOn = $state(splashEnabled())
+  let svcUrl = $state(importConfig.url)
+  let svcKey = $state(importConfig.key)
+  let svcMsg = $state<{ ok: boolean; text: string } | null>(null)
+  let svcBusy = $state(false)
+
+  function saveService() {
+    if (svcUrl.trim() && !normalizeServiceUrl(svcUrl)) { svcMsg = { ok: false, text: 'L\'indirizzo deve iniziare con https://' }; return false }
+    importConfig.save(svcUrl, svcKey)
+    svcUrl = importConfig.url
+    svcMsg = importConfig.enabled ? { ok: true, text: 'Salvato. Da ora, quando condividi o incolli un link, l\'app prova a leggere la ricetta.' } : { ok: true, text: 'Importazione disattivata: l\'app funziona come prima.' }
+    return true
+  }
+  async function trySvc() {
+    if (!saveService() || !importConfig.enabled) return
+    svcBusy = true
+    const r = await testService({ url: importConfig.url, key: importConfig.key })
+    svcBusy = false
+    svcMsg = { ok: r.ok, text: r.message }
+  }
+  function offService() { svcUrl = ''; svcKey = ''; saveService() }
 
   onMount(async () => { usage = await storageUsage() })
 
@@ -139,6 +162,25 @@
   </section>
 
   <section class="card">
+    <h2>Importa da un indirizzo web <small class="opt">facoltativo</small></h2>
+    <p class="hint" style="margin-top:6px">
+      Se hai un servizio di importazione, l'app può leggere una ricetta da un link e compilare i campi (sempre da controllare prima di salvare).
+      Senza indirizzo la funzione non c'è e non cambia nulla.
+    </p>
+    <label class="lbl" for="svc-url" style="margin-top:10px">Indirizzo del servizio</label>
+    <input id="svc-url" class="input" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false"
+      placeholder="https://…workers.dev" bind:value={svcUrl} />
+    <label class="lbl" for="svc-key" style="margin-top:10px">Chiave (se il servizio la richiede)</label>
+    <input id="svc-key" class="input" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" bind:value={svcKey} />
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" disabled={svcBusy} onclick={trySvc}>{svcBusy ? 'Provo…' : 'Salva e prova'}</button>
+      {#if importConfig.enabled}<button class="btn" onclick={offService}>Disattiva</button>{/if}
+    </div>
+    {#if svcMsg}<p class="banner" class:bad={!svcMsg.ok} role="status">{svcMsg.text}</p>{/if}
+    <p class="hint">Gli indirizzi che importi passano dal servizio, che non li conserva. Le ricette salvate restano sempre solo su questo telefono.</p>
+  </section>
+
+  <section class="card">
     <h2>Categorie</h2>
     <ul class="cats">
       {#each store.categories as c, i (c)}
@@ -167,6 +209,8 @@
 </div>
 
 <style>
+  .opt { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+  .banner.bad { color: var(--accent); }
   .cats { list-style: none; margin: 8px 0 0; padding: 0; }
   .cats li { display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--line); }
   .cats li span { flex: 1; font-size: 18px; }

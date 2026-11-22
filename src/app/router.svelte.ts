@@ -7,6 +7,7 @@ export type Route =
   | { name: 'inboxEdit'; itemId: string }
   | { name: 'cook'; id: string }
   | { name: 'today' }
+  | { name: 'import' }
 
 export function parse(hash: string): Route {
   const p = hash.replace(/^#\/?/, '').split('/')
@@ -17,6 +18,7 @@ export function parse(hash: string): Route {
   if (p[0] === 'sistema') return { name: 'inbox' }
   if (p[0] === 'cucina' && p[1]) return { name: 'cook', id: p[1] }
   if (p[0] === 'oggi') return { name: 'today' }
+  if (p[0] === 'importa') return { name: 'import' }
   if (p[0] === 'impostazioni') return { name: 'settings' }
   return { name: 'list' }
 }

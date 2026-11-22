@@ -7,7 +7,10 @@
   import { importPdf, isPdf } from '../../adapters/pdf/importPdf'
   import { recognizer } from '../../adapters/recognizer'
   import { emptyContent, toContent, type Rating, type RecipeContent } from '../../core/recipe'
-  import { extractUrl, linkError, linkKey } from '../../core/link'
+  import { extractUrl, hostLabel, linkError, linkKey } from '../../core/link'
+  import { importConfig } from '../../app/importService.svelte'
+  import { fetchImage, importRecipe } from '../../adapters/importer/client'
+  import { remoteToDraft } from '../../core/importMap'
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
   import PhotoEditor from '../components/PhotoEditor.svelte'
@@ -26,6 +29,15 @@
   let editing = $state<{ index: number; blob: Blob } | null>(null)
   let newCat = $state('')
   let linkMsg = $state('')
+  // importazione da un indirizzo web (solo se il servizio è configurato)
+  let notice = $state<{ kind: 'ok' | 'warn'; text: string } | null>(null)
+  let imageUrl = $state('')
+  let imageBusy = $state(false)
+  let imageBroken = $state(false)
+  let imageMsg = $state('')
+  let importing = $state(false)
+  let importMsg = $state('')
+  let importAbort: AbortController | null = null
   let pdfStatus = $state('')
   let ocrBusy = $state(false)
   let ocrFraction = $state(0)
@@ -48,7 +60,12 @@
     if (shared) {
       content.link = shared.link
       if (shared.title) content.title = shared.title
+      if (shared.source) content.source = shared.source
+      if (shared.mainIngredients) content.mainIngredients = shared.mainIngredients
+      if (shared.text) content.ocrText = shared.text
       if (shared.notes) content.notes = shared.notes
+      notice = shared.notice ?? null
+      imageUrl = shared.imageUrl ?? ''
       store.shareDraft = null
     }
     photos = item ? [{ id: item.photoId, inboxId: item.id }] : content.photoIds.map((pid) => ({ id: pid }))
@@ -159,12 +176,55 @@
     try {
       const text = await navigator.clipboard.readText()
       const u = extractUrl(text)
-      if (u) content.link = u
+      if (u) { content.link = u; if (importConfig.enabled) void importIntoForm() }
       else linkMsg = 'Negli appunti non c\'è un link che inizia con http o https.'
     } catch {
       linkMsg = 'Non riesco a leggere gli appunti: incolla il link a mano nel campo.'
     }
   }
+  /** Legge la ricetta dal link e compila SOLO i campi ancora vuoti: quello che hai scritto non si tocca. */
+  async function importIntoForm() {
+    const link = extractUrl(content.link)
+    if (!link || importing || !importConfig.enabled) return
+    importing = true; importMsg = ''
+    importAbort = new AbortController()
+    const res = await importRecipe(link, { url: importConfig.url, key: importConfig.key }, importAbort.signal)
+    importing = false; importAbort = null
+    if (res.ok) {
+      const d = remoteToDraft(res.recipe)
+      const filled: string[] = []
+      if (!content.title.trim() && d.title) { content.title = d.title; filled.push('titolo') }
+      if (!content.source.trim() && d.source) { content.source = d.source; filled.push('provenienza') }
+      if (!content.mainIngredients.trim() && d.mainIngredients) { content.mainIngredients = d.mainIngredients; filled.push('ingredienti') }
+      if (!content.ocrText && d.text) { content.ocrText = d.text; filled.push('testo della ricetta') }
+      if (!content.notes.trim() && d.notes) { content.notes = d.notes; filled.push('porzioni e tempi') }
+      if (res.recipe.image) { imageUrl = res.recipe.image; imageBroken = false; imageMsg = '' }
+      importMsg = filled.length
+        ? `Ricetta letta da ${d.source || hostLabel(link)}. Ho compilato: ${filled.join(', ')}. Quello che avevi già scritto non è stato toccato.`
+        : 'Ricetta letta, ma i campi erano già compilati: non ho cambiato nulla.'
+    } else if (res.code !== 'cancelled') {
+      const h = res.hints
+      if (h?.title && !content.title.trim()) content.title = h.title
+      if (h?.site && !content.source.trim()) content.source = h.site
+      if (h?.image) { imageUrl = h.image; imageBroken = false }
+      importMsg = `${res.message} Il link resta salvato nella ricetta.`
+    }
+  }
+
+  /** Scarica la foto della pagina (solo se la chiedi) e la aggiunge alle foto della ricetta. */
+  async function saveRemoteImage() {
+    if (!imageUrl || imageBusy) return
+    imageBusy = true; imageMsg = ''
+    try {
+      const blob = await fetchImage(imageUrl, { url: importConfig.url, key: importConfig.key })
+      photos.push(mkDraft(await processFile(blob)))
+      imageUrl = ''
+      imageMsg = 'Foto aggiunta. Ricordati di salvare la ricetta.'
+    } catch {
+      imageMsg = 'Non sono riuscita a scaricare la foto: puoi usare uno screenshot della pagina.'
+    } finally { imageBusy = false }
+  }
+
   /** Se lo stesso link è già in archivio, avviso (senza impedire nulla). */
   const duplicate = $derived.by(() => {
     const u = extractUrl(content.link)
@@ -226,6 +286,23 @@
   {#if !ready}
     <p class="hint">{error || 'Caricamento…'}</p>
   {:else}
+    {#if notice}<p class="banner" class:warn={notice.kind === 'warn'} role="status">{notice.kind === 'ok' ? '📥 ' : '⚠️ '}{notice.text}</p>{/if}
+    {#if imageUrl && importConfig.enabled}
+      <div class="card imgcard">
+        {#if imageBroken}
+          <div class="noprev">Anteprima non disponibile (il sito non la mostra qui), ma puoi provare a salvare la foto.</div>
+        {:else}
+          <img src={imageUrl} alt="Anteprima della foto della pagina" referrerpolicy="no-referrer" loading="lazy" onerror={() => (imageBroken = true)} />
+        {/if}
+        <div class="row">
+          <button class="btn" disabled={imageBusy} onclick={saveRemoteImage}>{imageBusy ? 'Scarico…' : '📷 Salva la foto'}</button>
+          <button class="btn" onclick={() => (imageUrl = '')}>Nascondi</button>
+        </div>
+        <p class="hint" style="margin:6px 0 0">È solo un'anteprima dal sito: la foto viene scaricata solo se tocchi «Salva la foto».</p>
+      </div>
+    {/if}
+    {#if imageMsg}<p class="hint" role="status">{imageMsg}</p>{/if}
+
     <div class="field">
       <span class="lbl">Foto della ricetta</span>
       <div class="plist">
@@ -281,6 +358,16 @@
         <button type="button" class="btn" style="flex:none" onclick={pasteLink}>📋 Incolla link</button>
       </div>
       {#if linkMsg}<p class="hint" style="color:var(--accent)" role="alert">{linkMsg}</p>{/if}
+      {#if importConfig.enabled && extractUrl(content.link)}
+        {#if importing}
+          <div class="banner" role="status">Leggo la ricetta…
+            <div class="row"><button class="btn" onclick={() => importAbort?.abort()}>Annulla</button></div>
+          </div>
+        {:else}
+          <button type="button" class="btn block" style="margin-top:8px" onclick={importIntoForm}>📥 Leggi la ricetta dal link</button>
+        {/if}
+      {/if}
+      {#if importMsg}<p class="hint" role="status">{importMsg}</p>{/if}
       {#if duplicate}
         <p class="banner" role="status">Hai già una ricetta con questo link: <a href={`#/r/${duplicate.id}`}><b>{duplicate.title || 'Senza titolo'}</b></a>.</p>
       {/if}
@@ -375,5 +462,8 @@
   .pth img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .pact { display: flex; flex-direction: column; gap: 8px; justify-content: center; flex: 1; min-width: 0; }
   .pn { font-weight: 700; }
+  .imgcard img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; display: block; margin-bottom: 8px; background: var(--line); }
+  .noprev { background: var(--line); border-radius: 10px; padding: 14px; font-size: 15px; color: var(--muted); margin-bottom: 8px; }
+  .banner.warn { background: var(--warn-bg); }
   .btn.small { min-height: 44px; padding: 6px 10px; font-size: 15px; flex: 1; }
 </style>

@@ -1,0 +1,18 @@
+name = "ricettacolo-import"
+main = "src/index.ts"
+compatibility_date = "2025-11-01"
+
+# Indirizzo pubblico di prova su workers.dev (si può disattivare dalla dashboard)
+workers_dev = true
+
+[vars]
+# Origini autorizzate a usare il servizio, separate da virgole. Mai "*".
+# Cambia solo se l'app si trova a un altro indirizzo.
+ALLOWED_ORIGINS = "https://bubbismo.github.io"
+
+# Limite di richieste per client: 10 al minuto. (Funzione "Rate Limiting" di Workers.)
+# Se la pubblicazione ti dà un errore su questo blocco, vedi il README, sezione "Se il limite non è disponibile".
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }

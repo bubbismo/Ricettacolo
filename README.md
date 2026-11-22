@@ -26,6 +26,7 @@ Lo stesso file serve per passare le ricette a un altro telefono (**Importa**): l
 - **Testo facoltativo**: lettura del testo da pagine stampate e screenshot (OCR italiano, tutto sul telefono; la prima volta serve la
   connessione per scaricare il lettore), testo diretto dai PDF, lettura a voce.
 - **Link** alle ricette trovate sul web: si incolla (o su Android si condivide la pagina verso Ricettacolo) e resta salvato con la ricetta. Non scarica né legge le pagine.
+- **Importazione da un indirizzo web** (facoltativa): con un piccolo servizio gratuito su Cloudflare (cartella `import-service/`, con la guida di pubblicazione) l'app legge una ricetta da un link e compila i campi. Senza il servizio non cambia nulla; in ogni caso c'è il ripiego sul testo condiviso ("Ingredienti", "Preparazione").
 - **PDF** di una ricetta, di una selezione o di tutto il ricettario; **backup** `.ricettario` per passare tutto a un altro telefono.
 
 ## Sviluppo
@@ -48,3 +49,4 @@ Pubblicazione: ogni push su `main` esegue controlli, test e build e pubblica su 
 - `src/adapters` – IndexedDB, backup `.ricettario` (zip), PDF, elaborazione immagini, funzioni del dispositivo
 - `src/app` – stato e navigazione
 - `src/ui` – schermate e componenti Svelte
+- `import-service` – servizio facoltativo di importazione (Cloudflare Worker), pacchetto separato con le sue prove
