@@ -12,6 +12,8 @@ class Store {
   persisted = $state<boolean | undefined>(undefined)
   filters = $state<Filters>(defaultFilters())
   reminderDismissed = $state(false)
+  /** dati arrivati dal tasto Condividi, in attesa di essere messi nel modulo "nuova ricetta" */
+  shareDraft = $state<{ link: string; title: string; notes: string } | null>(null)
 
   get visible(): Recipe[] {
     return searchRecipes(this.recipes, this.filters)

@@ -4,6 +4,7 @@
   import { commitRecipe, deleteRecipe } from '../../adapters/storage/db'
   import { exportPackage, exportPdf } from '../../app/exporting'
   import { formatDate, toContent, todayISO, type Rating } from '../../core/recipe'
+  import { extractUrl, hostLabel } from '../../core/link'
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
   import { tick } from '../../adapters/device/haptics'
@@ -81,6 +82,9 @@
     <div class="card">
       <div class="line"><Stars value={r.rating} onchange={setRating} /></div>
       {#if r.source}<p class="kv"><b>Da</b> {r.source}</p>{/if}
+      {#if extractUrl(r.link)}
+        <p class="kv"><b>Link</b> <a class="weblink" href={extractUrl(r.link)} target="_blank" rel="noopener noreferrer">🔗 {hostLabel(r.link)}</a></p>
+      {/if}
       <p class="kv"><b>Data</b> {formatDate(r.date)}</p>
       {#if r.categories.length}
         <div class="chips" style="margin:6px 0">{#each r.categories as c (c)}<span class="chip" aria-pressed="true">{c}</span>{/each}</div>
@@ -118,6 +122,7 @@
   .kv { margin: 6px 0; }
   .kv b { color: var(--muted); font-size: 15px; display: block; }
   .notes { white-space: pre-wrap; }
+  .weblink { color: var(--accent); font-weight: 600; word-break: break-all; }
   .txt { white-space: pre-wrap; font: inherit; font-size: 16px; margin: 8px 0 0; }
   .line { margin: -6px 0 4px -6px; }
 </style>

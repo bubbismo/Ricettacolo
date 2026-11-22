@@ -11,6 +11,18 @@ const INDEX_ROWS = 40
 
 type Doc = InstanceType<typeof import('jspdf').jsPDF>
 
+/** Spezza una stringa senza spazi (un indirizzo web) in righe che stanno nella larghezza data. */
+function breakLong(doc: Doc, text: string, width: number): string[] {
+  const lines: string[] = []
+  let cur = ''
+  for (const ch of text) {
+    if (doc.getTextWidth(cur + ch) > width && cur) { lines.push(cur); cur = '' }
+    cur += ch
+  }
+  if (cur) lines.push(cur)
+  return lines
+}
+
 function drawRecipe(doc: Doc, { recipe: r, photos }: PdfRecipe) {
   let y = MARGIN + 6
   doc.setFont('helvetica', 'bold').setFontSize(22).setTextColor(60, 36, 20)
@@ -22,6 +34,7 @@ function drawRecipe(doc: Doc, { recipe: r, photos }: PdfRecipe) {
   doc.setFont('helvetica', 'normal').setFontSize(11).setTextColor(80, 60, 45)
   const rows: [string, string][] = []
   if (r.source) rows.push(['Da', r.source])
+  if (r.link) rows.push(['Link', r.link])
   rows.push(['Data', formatDate(r.date)])
   if (r.categories.length) rows.push(['Categorie', r.categories.join(', ')])
   if (r.rating) rows.push(['Voto', `${r.rating} su 5`])
@@ -34,8 +47,11 @@ function drawRecipe(doc: Doc, { recipe: r, photos }: PdfRecipe) {
     const lw = doc.getTextWidth(label)
     doc.text(label, MARGIN, y)
     doc.setFont('helvetica', 'normal')
-    const lines = doc.splitTextToSize(v, PAGE_W - 2 * MARGIN - lw) as string[]
+    const isLink = k === 'Link'
+    const lines = isLink ? breakLong(doc, v, PAGE_W - 2 * MARGIN - lw) : (doc.splitTextToSize(v, PAGE_W - 2 * MARGIN - lw) as string[])
     lines.forEach((l, i) => { doc.text(l, MARGIN + lw, y + i * 5) })
+    // stampato come testo, e in più cliccabile dove il lettore PDF lo permette
+    if (isLink) doc.link(MARGIN + lw, y - 4, PAGE_W - 2 * MARGIN - lw, lines.length * 5, { url: v })
     y += lines.length * 5 + 1.5
   }
   y += 2

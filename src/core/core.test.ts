@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contentHash } from './hash'
+import { canonicalContent, contentHash, sha256Hex } from './hash'
 import { decideMerge } from './merge'
 import { defaultFilters, searchRecipes } from './search'
 import { emptyContent, normalizeRecipe, type Recipe } from './recipe'
@@ -61,4 +61,30 @@ describe('migrazioni', () => {
     expect(r.photoIds).toEqual([])
   })
   it('scarta record senza id', () => expect(migrateRecipe({ title: 'no' })).toBeNull())
+})
+
+describe('compatibilità schema v1 → v2 (link)', () => {
+  it('senza link l\'hash è identico a quello calcolato dalla versione 1', async () => {
+    const c = { ...emptyContent(), title: 'Vecchia', categories: ['b', 'a'], date: '2026-01-01', photoIds: ['p1'], rating: 4 as const }
+    // formula della versione 1: 11 elementi, nessun link
+    const legacy = JSON.stringify([c.photoIds, 'Vecchia', '', '2026-01-01', ['a', 'b'], 4, false, '', '', null, null])
+    expect(canonicalContent(c)).toBe(legacy)
+    expect(await contentHash(c)).toBe(await sha256Hex(legacy))
+  })
+  it('il link cambia l\'hash, gli spazi intorno no', async () => {
+    const base = { ...emptyContent(), date: '2026-01-01' }
+    const a = await contentHash({ ...base, link: 'https://sito.it/x' })
+    expect(a).not.toBe(await contentHash(base))
+    expect(a).toBe(await contentHash({ ...base, link: '  https://sito.it/x ' }))
+  })
+  it('un record v1 (senza link) si legge senza perdere nulla; un link non http viene scartato', () => {
+    const old = migrateRecipe({ id: 'x', schemaVersion: 1, title: 'Vecchia', source: 'nonna', rating: 3, notes: 'n' })!
+    expect(old).toMatchObject({ title: 'Vecchia', source: 'nonna', rating: 3, notes: 'n', link: '', schemaVersion: 2 })
+    expect(migrateRecipe({ id: 'y', link: 'javascript:alert(1)' })!.link).toBe('')
+    expect(migrateRecipe({ id: 'z', link: 'https://sito.it/r' })!.link).toBe('https://sito.it/r')
+  })
+  it('la ricerca trova anche dal link', () => {
+    const r = mk({ id: 'l', title: 'Pizza', link: 'https://www.giallozafferano.it/pizza' })
+    expect(searchRecipes([r], { ...defaultFilters(), query: 'giallozafferano' })).toHaveLength(1)
+  })
 })

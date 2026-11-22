@@ -14,6 +14,8 @@ export function canonicalContent(c: RecipeContent): string {
     c.notes.trim(),
     c.lastCookedAt,
     c.ocrText,
+    // il link entra nell'hash solo se c'è: le ricette senza link mantengono l'hash che avevano prima (schema v1)
+    ...(c.link?.trim() ? [c.link.trim()] : []),
   ])
 }
 

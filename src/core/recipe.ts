@@ -1,6 +1,7 @@
-/** Modello dati della ricetta (schema versione 1). */
+/** Modello dati della ricetta. Versione 2: aggiunto `link` (le ricette v1 si leggono con link vuoto). */
+import { cleanLink } from './link'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export type Rating = 1 | 2 | 3 | 4 | 5
 
@@ -16,6 +17,8 @@ export interface Recipe {
   photoIds: string[]
   title: string
   source: string
+  /** indirizzo web di origine (facoltativo, solo http/https) */
+  link: string
   /** AAAA-MM-GG */
   date: string
   categories: string[]
@@ -31,7 +34,7 @@ export interface Recipe {
 /** I campi modificabili dall'utente (tutto tranne identità, hash e date tecniche). */
 export type RecipeContent = Pick<
   Recipe,
-  | 'photoIds' | 'title' | 'source' | 'date' | 'categories' | 'rating' | 'favorite'
+  | 'photoIds' | 'title' | 'source' | 'link' | 'date' | 'categories' | 'rating' | 'favorite'
   | 'mainIngredients' | 'notes' | 'lastCookedAt' | 'ocrText'
 >
 
@@ -76,7 +79,7 @@ export function newId(): string {
 
 export function emptyContent(): RecipeContent {
   return {
-    photoIds: [], title: '', source: '', date: todayISO(), categories: [], rating: null,
+    photoIds: [], title: '', source: '', link: '', date: todayISO(), categories: [], rating: null,
     favorite: false, mainIngredients: '', notes: '', lastCookedAt: null, ocrText: null,
   }
 }
@@ -95,6 +98,7 @@ export function normalizeRecipe(raw: Partial<Recipe> & { id: string }): Recipe {
     photoIds: Array.isArray(raw.photoIds) ? raw.photoIds.filter((x) => typeof x === 'string') : [],
     title: str(raw.title),
     source: str(raw.source),
+    link: cleanLink(raw.link),
     date: str(raw.date) || todayISO(),
     categories: Array.isArray(raw.categories) ? raw.categories.filter((x) => typeof x === 'string') : [],
     rating: r === 1 || r === 2 || r === 3 || r === 4 || r === 5 ? r : null,
@@ -108,7 +112,7 @@ export function normalizeRecipe(raw: Partial<Recipe> & { id: string }): Recipe {
 
 export function toContent(r: Recipe): RecipeContent {
   return {
-    photoIds: [...r.photoIds], title: r.title, source: r.source, date: r.date, categories: [...r.categories],
+    photoIds: [...r.photoIds], title: r.title, source: r.source, link: r.link, date: r.date, categories: [...r.categories],
     rating: r.rating, favorite: r.favorite, mainIngredients: r.mainIngredients, notes: r.notes,
     lastCookedAt: r.lastCookedAt, ocrText: r.ocrText,
   }

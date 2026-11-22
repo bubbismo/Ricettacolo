@@ -8,8 +8,8 @@ export function migrateRecipe(raw: unknown): Recipe | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as Partial<Recipe>
   if (typeof o.id !== 'string' || !o.id) return null
-  // v1 è la prima versione: basta normalizzare. Le future versioni aggiungeranno passi qui,
-  // in base a o.schemaVersion.
+  // v1 → v2: è arrivato `link`; manca nei record vecchi e normalizeRecipe lo porta a vuoto, senza toccare altro.
+  // Le future versioni aggiungeranno passi qui, in base a o.schemaVersion.
   return normalizeRecipe(o as Partial<Recipe> & { id: string })
 }
 

@@ -1,6 +1,8 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { strToU8, zipSync } from 'fflate'
 import { buildRicettario, importRicettario, BackupError } from './ricettario'
+import { sha256Hex } from '../../core/hash'
 import * as db from '../storage/db'
 import { emptyContent } from '../../core/recipe'
 
@@ -97,5 +99,40 @@ describe('backup e importazione', () => {
     expect(await db.hasPhoto(c.photo.id)).toBe(true) // ancora in cassetta
     await db.deleteInboxItem('i2')
     expect(await db.hasPhoto(c.photo.id)).toBe(false)
+  })
+
+  it('il link attraversa il backup', async () => {
+    const r = await db.commitRecipe({ content: { ...emptyContent(), title: 'Con link', link: 'https://sito.it/ricetta' } })
+    const file = await buildRicettario({ photoQuality: 'piena', deps })
+    await wipe()
+    expect(await importRicettario(file, deps)).toMatchObject({ added: 1 })
+    const back = await db.getRecipe(r.id)
+    expect(back?.link).toBe('https://sito.it/ricetta')
+    expect(back?.hash).toBe(r.hash)
+  })
+
+  it('un backup vecchio (formato 1, senza campo link) si importa e le ricette restano identiche', async () => {
+    const legacyHash = await sha256Hex(JSON.stringify([[], 'Ricetta vecchia', 'nonna', '2025-05-05', ['Dolci'], 5, true, 'uova', 'note', null, null]))
+    const body = {
+      format: 'ricettacolo', formatVersion: 1, schemaVersion: 1, exportedAt: '2025-06-01T00:00:00.000Z', scope: 'tutto', photoQuality: 'piena',
+      categories: ['Dolci'], photos: [], inbox: [],
+      recipes: [{
+        id: 'vecchia-1', schemaVersion: 1, hash: legacyHash, createdAt: '2025-05-05T10:00:00.000Z', updatedAt: '2025-05-05T10:00:00.000Z',
+        photoIds: [], title: 'Ricetta vecchia', source: 'nonna', date: '2025-05-05', categories: ['Dolci'], rating: 5, favorite: true,
+        mainIngredients: 'uova', notes: 'note', lastCookedAt: null, ocrText: null,
+      }],
+    }
+    const zip = zipSync({ 'ricettario.json': strToU8(JSON.stringify(body)) })
+    const file = new Blob([zip as BlobPart])
+    expect(await importRicettario(file, deps)).toMatchObject({ added: 1, skipped: 0 })
+    const r = await db.getRecipe('vecchia-1')
+    expect(r).toMatchObject({ title: 'Ricetta vecchia', source: 'nonna', rating: 5, favorite: true, link: '', hash: legacyHash })
+    // reimportandolo: identico, quindi saltata (l'hash non è cambiato con la nuova versione)
+    expect(await importRicettario(file, deps)).toMatchObject({ added: 0, skipped: 1 })
+  })
+
+  it('un file di una versione futura viene rifiutato con un messaggio chiaro', async () => {
+    const zip = zipSync({ 'ricettario.json': strToU8(JSON.stringify({ format: 'ricettacolo', formatVersion: 99, recipes: [] })) })
+    await expect(importRicettario(new Blob([zip as BlobPart]), deps)).rejects.toThrow(/aggiorna/i)
   })
 })

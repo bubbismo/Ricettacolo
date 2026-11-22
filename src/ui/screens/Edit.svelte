@@ -7,6 +7,7 @@
   import { importPdf, isPdf } from '../../adapters/pdf/importPdf'
   import { recognizer } from '../../adapters/recognizer'
   import { emptyContent, toContent, type Rating, type RecipeContent } from '../../core/recipe'
+  import { extractUrl, linkError, linkKey } from '../../core/link'
   import Photo from '../components/Photo.svelte'
   import Stars from '../components/Stars.svelte'
   import PhotoEditor from '../components/PhotoEditor.svelte'
@@ -24,6 +25,7 @@
   let error = $state('')
   let editing = $state<{ index: number; blob: Blob } | null>(null)
   let newCat = $state('')
+  let linkMsg = $state('')
   let pdfStatus = $state('')
   let ocrBusy = $state(false)
   let ocrFraction = $state(0)
@@ -41,6 +43,14 @@
     const item = inboxId ? store.inbox.find((i) => i.id === inboxId) : undefined
     if (inboxId && !item) { error = 'Questa foto non è più nella cassetta.'; return }
     content = r ? toContent(r) : emptyContent()
+    // arrivo dal tasto Condividi: link (e titolo della pagina) già compilati
+    const shared = !id && !inboxId ? store.shareDraft : null
+    if (shared) {
+      content.link = shared.link
+      if (shared.title) content.title = shared.title
+      if (shared.notes) content.notes = shared.notes
+      store.shareDraft = null
+    }
     photos = item ? [{ id: item.photoId, inboxId: item.id }] : content.photoIds.map((pid) => ({ id: pid }))
     initial = snapshot()
     ready = true
@@ -137,6 +147,32 @@
     }
   }
 
+  /** Dal testo incollato tiene solo l'indirizzo; se non ce n'è uno valido lo segnala. */
+  function normalizeLink() {
+    const v = content.link.trim()
+    if (!v) { content.link = ''; linkMsg = ''; return }
+    const u = extractUrl(v)
+    if (u) { content.link = u; linkMsg = '' } else linkMsg = linkError(v)
+  }
+  async function pasteLink() {
+    linkMsg = ''
+    try {
+      const text = await navigator.clipboard.readText()
+      const u = extractUrl(text)
+      if (u) content.link = u
+      else linkMsg = 'Negli appunti non c\'è un link che inizia con http o https.'
+    } catch {
+      linkMsg = 'Non riesco a leggere gli appunti: incolla il link a mano nel campo.'
+    }
+  }
+  /** Se lo stesso link è già in archivio, avviso (senza impedire nulla). */
+  const duplicate = $derived.by(() => {
+    const u = extractUrl(content.link)
+    if (!u) return undefined
+    const k = linkKey(u)
+    return store.recipes.find((r) => r.id !== id && r.link && linkKey(r.link) === k)
+  })
+
   const toggleCat = (c: string) => {
     content.categories = content.categories.includes(c) ? content.categories.filter((x) => x !== c) : [...content.categories, c]
   }
@@ -153,6 +189,8 @@
   async function save() {
     error = ''
     if (!content.title.trim()) { error = 'Dai un titolo alla ricetta.'; return }
+    normalizeLink()
+    if (linkMsg && content.link.trim()) { error = linkMsg; return }
     saving = true
     try {
       const saved = await commitRecipe({
@@ -234,6 +272,18 @@
     <div class="field">
       <label for="source">Da chi / provenienza</label>
       <input id="source" class="input" placeholder="es. ricetta della nonna Maria" bind:value={content.source} autocomplete="off" />
+    </div>
+    <div class="field">
+      <label for="link">Link (se viene dal web)</label>
+      <div class="row" style="flex-wrap:nowrap">
+        <input id="link" class="input" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false"
+          placeholder="https://…" bind:value={content.link} onblur={normalizeLink} onpaste={() => setTimeout(normalizeLink)} />
+        <button type="button" class="btn" style="flex:none" onclick={pasteLink}>📋 Incolla link</button>
+      </div>
+      {#if linkMsg}<p class="hint" style="color:var(--accent)" role="alert">{linkMsg}</p>{/if}
+      {#if duplicate}
+        <p class="banner" role="status">Hai già una ricetta con questo link: <a href={`#/r/${duplicate.id}`}><b>{duplicate.title || 'Senza titolo'}</b></a>.</p>
+      {/if}
     </div>
     <div class="field">
       <label for="date">Data (quando l'hai ricevuta)</label>

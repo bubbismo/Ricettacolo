@@ -20,7 +20,7 @@ export const fold = (s: string): string =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 function haystack(r: Recipe): string {
-  return fold([r.title, r.source, r.mainIngredients, r.notes, r.ocrText ?? ''].join(' \n '))
+  return fold([r.title, r.source, r.link, r.mainIngredients, r.notes, r.ocrText ?? ''].join(' \n '))
 }
 
 export function matches(r: Recipe, f: Filters): boolean {

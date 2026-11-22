@@ -3,6 +3,7 @@
   import { router } from '../app/router.svelte'
   import { store } from '../app/store.svelte'
   import { pwaUpdate } from '../app/pwaUpdate.svelte'
+  import { handleShare } from '../app/share'
   import List from './screens/List.svelte'
   import View from './screens/View.svelte'
   import Edit from './screens/Edit.svelte'
@@ -12,7 +13,7 @@
   import Cook from './screens/Cook.svelte'
   import Splash from './Splash.svelte'
 
-  onMount(() => { void store.init() })
+  onMount(() => { void store.init().then(handleShare) })
   const r = $derived(router.route)
   const showTabs = $derived(r.name === 'list' || r.name === 'settings' || r.name === 'inbox' || r.name === 'today')
 </script>

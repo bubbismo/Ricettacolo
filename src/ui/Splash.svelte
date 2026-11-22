@@ -2,7 +2,8 @@
   import { splashEnabled } from '../app/splash'
   import { tick } from '../adapters/device/haptics'
 
-  let visible = $state(splashEnabled())
+  // se si arriva dal tasto Condividi si va dritti al lavoro, senza schermata iniziale
+  let visible = $state(splashEnabled() && new URLSearchParams(location.search).get('share') !== '1')
   let leaving = $state(false)
   const icon = `${import.meta.env.BASE_URL}favicon.svg`
 

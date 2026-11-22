@@ -7,7 +7,8 @@ import * as db from '../storage/db'
 
 /** Formato proprio: uno zip (estensione .ricettario) con ricettario.json e le foto in foto/<id>.jpg */
 export const FORMAT = 'ricettacolo'
-export const FORMAT_VERSION = 1
+/** 2: le ricette hanno il campo `link`. Si leggono anche i file di versione 1. */
+export const FORMAT_VERSION = 2
 export const EXTENSION = '.ricettario'
 const JSON_NAME = 'ricettario.json'
 
